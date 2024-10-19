@@ -1,12 +1,15 @@
-<?php namespace jb\common;
+<?php
+namespace jb\common;
+
+use WP_Filesystem_Base;
+use WP_Post;
+use function WP_Filesystem;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-
 if ( ! class_exists( 'jb\common\Job' ) ) {
-
 
 	/**
 	 * Class Job
@@ -14,14 +17,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 	 * @package jb\common
 	 */
 	class Job {
-
-
-		/**
-		 * Job constructor.
-		 */
-		public function __construct() {
-		}
-
 
 		/**
 		 * Render job types layout
@@ -70,7 +65,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return ob_get_clean();
 		}
 
-
 		/**
 		 * Calculates and returns the job expiry date.
 		 *
@@ -88,7 +82,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return '';
 		}
 
-
 		/**
 		 * Returns the job expiry date.
 		 *
@@ -104,11 +97,8 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 				return '';
 			}
 
-			$expiry_date = date_i18n( get_option( 'date_format' ), strtotime( $expiry_date ) );
-
-			return $expiry_date;
+			return date_i18n( get_option( 'date_format' ), strtotime( $expiry_date ) );
 		}
-
 
 		/**
 		 * Returns the job's raw expiry date.
@@ -127,7 +117,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 
 			return $expiry_date;
 		}
-
 
 		/**
 		 * Returns the job posted date.
@@ -155,7 +144,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return $posted_date;
 		}
 
-
 		/**
 		 * Returns the job expiry date.
 		 *
@@ -166,10 +154,8 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 		 * @since 1.0
 		 */
 		public function get_html_datetime( $job_id ) {
-			$datetime = get_post_time( 'c', false, $job_id, true );
-			return $datetime;
+			return get_post_time( 'c', false, $job_id, true );
 		}
-
 
 		/**
 		 * Returns the job category.
@@ -191,11 +177,8 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 				return '';
 			}
 
-			$cat_html = '<i class="fas fa-list-alt"></i><a href="' . esc_url( get_term_link( $terms[0]->term_id, 'jb-job-category' ) ) . '">' . esc_html( $terms[0]->name ) . '</a>';
-
-			return $cat_html;
+			return '<i class="fas fa-list-alt"></i><a href="' . esc_url( get_term_link( $terms[0]->term_id, 'jb-job-category' ) ) . '">' . esc_html( $terms[0]->name ) . '</a>';
 		}
-
 
 		/**
 		 * Returns the job author.
@@ -250,7 +233,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return $location;
 		}
 
-
 		/**
 		 * Returns the job location data.
 		 *
@@ -262,11 +244,8 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 		 */
 		public function get_location_data( $job_id ) {
 			$location_data = get_post_meta( $job_id, 'jb-location-raw-data', true );
-			$location_data = ! empty( $location_data ) ? $location_data : '';
-
-			return $location_data;
+			return ! empty( $location_data ) ? $location_data : '';
 		}
-
 
 		/**
 		 * Returns the job location.
@@ -288,13 +267,14 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 
 			if ( '1' === $location_type && empty( $location ) ) {
 				return __( 'Remote', 'jobboardwp' );
-			} elseif ( empty( $location ) ) {
+			}
+
+			if ( empty( $location ) ) {
 				return __( 'Anywhere', 'jobboardwp' );
 			}
 
 			return $location;
 		}
-
 
 		/**
 		 * Get location link
@@ -313,28 +293,28 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			if ( '1' === $type_raw ) {
 				if ( empty( $location_raw ) ) {
 					return esc_html__( 'Remote', 'jobboardwp' );
-				} else {
-					$location = JB()->common()->job()->get_location( $job_id );
-					if ( empty( $location ) ) {
-						return '';
-					}
-					$location = '<a href="https://maps.google.com/maps?q=' . rawurlencode( wp_strip_all_tags( $location ) ) . '&zoom=14&size=512x512&maptype=roadmap&sensor=false" target="_blank">' . $location . '</a>';
-					// translators: %1$s is a location type; %2$s is a location.
-					return sprintf( __( '%1$s (%2$s)', 'jobboardwp' ), $type, $location );
 				}
-			} elseif ( empty( $location_raw ) ) {
-				return esc_html__( 'Anywhere', 'jobboardwp' );
-			} else {
+
 				$location = JB()->common()->job()->get_location( $job_id );
 				if ( empty( $location ) ) {
 					return '';
 				}
-
 				$location = '<a href="https://maps.google.com/maps?q=' . rawurlencode( wp_strip_all_tags( $location ) ) . '&zoom=14&size=512x512&maptype=roadmap&sensor=false" target="_blank">' . $location . '</a>';
-				return $location;
+				// translators: %1$s is a location type; %2$s is a location.
+				return sprintf( __( '%1$s (%2$s)', 'jobboardwp' ), $type, $location );
 			}
-		}
 
+			if ( empty( $location_raw ) ) {
+				return esc_html__( 'Anywhere', 'jobboardwp' );
+			}
+
+			$location = JB()->common()->job()->get_location( $job_id );
+			if ( empty( $location ) ) {
+				return '';
+			}
+
+			return '<a href="https://maps.google.com/maps?q=' . rawurlencode( wp_strip_all_tags( $location ) ) . '&zoom=14&size=512x512&maptype=roadmap&sensor=false" target="_blank">' . $location . '</a>';
+		}
 
 		/**
 		 * Returns the job company.
@@ -355,7 +335,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			}
 
 			if ( ! empty( $company_website ) ) {
-				/** @noinspection HtmlUnknownTarget */
 				$company = sprintf( '<span title="%s"><a href="%s">%s</a></span>', $company_tagline, $company_website, $company_name );
 			} else {
 				$company = sprintf( '<span title="%s">%s</span>', $company_tagline, $company_name );
@@ -393,7 +372,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			 *
 			 * @return {array} Maybe modified job's company data.
 			 */
-			$company_data = apply_filters(
+			return apply_filters(
 				'jb-job-company-data', // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
 				array(
 					'name'      => $company_name,
@@ -405,10 +384,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 				),
 				$job_id
 			);
-
-			return $company_data;
 		}
-
 
 		/**
 		 * Get job logo
@@ -426,7 +402,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 
 				$attachment_id = get_post_thumbnail_id( $job_id );
 				if ( $attachment_id ) {
-					$image        = wp_get_attachment_image_src( $attachment_id, 'thumbnail' );
+					$image        = wp_get_attachment_image_src( $attachment_id );
 					$company_logo = isset( $image[0] ) ? $image[0] : '';
 				}
 
@@ -442,23 +418,20 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 				 *
 				 * @return {array} Job logo.
 				 */
-				$company_logo = apply_filters( 'jb_job_logo', $company_logo, $job_id, $raw );
-				return $company_logo;
-			} else {
-				$company_logo = get_the_post_thumbnail( $job_id, 'thumbnail', array( 'class' => 'jb-job-company-logo' ) );
-
-				if ( ! empty( $company_logo ) ) {
-					$company_logo = '<div class="jb-job-company-logo-wrapper">' . $company_logo . '</div>';
-				} else {
-					$company_logo = '';
-				}
-
-				/** This filter is documented in includes/common/class-job.php */
-				$company_logo = apply_filters( 'jb_job_logo', $company_logo, $job_id, $raw );
-				return $company_logo;
+				return apply_filters( 'jb_job_logo', $company_logo, $job_id, $raw );
 			}
-		}
 
+			$company_logo = get_the_post_thumbnail( $job_id, 'thumbnail', array( 'class' => 'jb-job-company-logo' ) );
+
+			if ( ! empty( $company_logo ) ) {
+				$company_logo = '<div class="jb-job-company-logo-wrapper">' . $company_logo . '</div>';
+			} else {
+				$company_logo = '';
+			}
+
+			/** This filter is documented in includes/common/class-job.php */
+			return apply_filters( 'jb_job_logo', $company_logo, $job_id, $raw );
+		}
 
 		/**
 		 * Returns the job status.
@@ -481,9 +454,12 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			}
 
 			$post_status = get_post_status_object( $job->post_status );
+			if ( null === $post_status ) {
+				return '';
+			}
+
 			return ! empty( $post_status->label ) ? $post_status->label : '';
 		}
-
 
 		/**
 		 * Is job filled?
@@ -499,7 +475,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return (bool) $filled;
 		}
 
-
 		/**
 		 * Is job featured?
 		 *
@@ -513,7 +488,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			$featured = get_post_meta( $job_id, 'jb-is-featured', true );
 			return (bool) $featured;
 		}
-
 
 		/**
 		 * Is job expired?
@@ -538,7 +512,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return false;
 		}
 
-
 		/**
 		 * Can job be applied?
 		 *
@@ -553,7 +526,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 
 			$can_applied = false;
 			if ( empty( $job ) || is_wp_error( $job ) ) {
-				return $can_applied;
+				return false;
 			}
 
 			if ( ! $this->is_filled( $job_id ) && ! in_array( $job->post_status, array( 'jb-preview', 'jb-expired' ), true ) ) {
@@ -571,9 +544,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			 *
 			 * @return {bool} Can a job be applied?
 			 */
-			$can_applied = apply_filters( 'jb_can_applied_job', $can_applied, $job_id );
-
-			return $can_applied;
+			return apply_filters( 'jb_can_applied_job', $can_applied, $job_id );
 		}
 
 		/**
@@ -780,16 +751,13 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			 *
 			 * @return {array} Job data in raw format.
 			 */
-			$response = apply_filters( 'jb-job-raw-data', $response, $job_id ); // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
-
-			return $response;
+			return apply_filters( 'jb-job-raw-data', $response, $job_id ); // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
 		}
-
 
 		/**
 		 * Get job actions
 		 *
-		 * @param int|\WP_Post $job
+		 * @param int|WP_Post|array $job
 		 *
 		 * @return array
 		 *
@@ -802,7 +770,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 
 			$actions = array();
 
-			if ( in_array( $job->post_status, array( 'jb-expired' ), true ) ) {
+			if ( 'jb-expired' === $job->post_status ) {
 				$actions = array_merge(
 					$actions,
 					array(
@@ -832,16 +800,14 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 				);
 			}
 
-			if ( in_array( $job->post_status, array( 'pending' ), true ) ) {
-				if ( JB()->options()->get( 'pending-job-editing' ) ) {
-					$actions['edit'] = array(
-						'href'  => $this->get_edit_link( $job->ID ),
-						'title' => __( 'Edit', 'jobboardwp' ),
-					);
-				}
+			if ( 'pending' === $job->post_status && JB()->options()->get( 'pending-job-editing' ) ) {
+				$actions['edit'] = array(
+					'href'  => $this->get_edit_link( $job->ID ),
+					'title' => __( 'Edit', 'jobboardwp' ),
+				);
 			}
 
-			if ( in_array( $job->post_status, array( 'publish' ), true ) ) {
+			if ( 'publish' === $job->post_status ) {
 				if ( 0 !== (int) JB()->options()->get( 'published-job-editing' ) ) {
 					$actions['edit'] = array(
 						'href'  => $this->get_edit_link( $job->ID ),
@@ -866,7 +832,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 
 			return $actions;
 		}
-
 
 		/**
 		 * Get job preview link
@@ -916,11 +881,10 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			);
 		}
 
-
 		/**
 		 * Get job's structured data for schema.org
 		 *
-		 * @param int|\WP_Post $job
+		 * @param int|WP_Post|array $job
 		 *
 		 * @return array|bool
 		 *
@@ -932,7 +896,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			}
 
 			$data               = array();
-			$data['@context']   = 'http://schema.org/';
+			$data['@context']   = 'https://schema.org/';
 			$data['@type']      = 'JobPosting';
 			$data['datePosted'] = get_post_time( 'c', false, $job );
 
@@ -1043,13 +1007,12 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return apply_filters( 'jb-job-structured-data', $data, $job ); // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
 		}
 
-
 		/**
 		 * Gets the job location data.
 		 *
-		 * @see http://schema.org/PostalAddress
+		 * @see https://schema.org/PostalAddress
 		 *
-		 * @param \WP_Post $job
+		 * @param WP_Post $job
 		 * @return array|bool
 		 *
 		 * @since 1.0
@@ -1091,7 +1054,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return apply_filters( 'jb-job-location-structured-data', $address, $job ); // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
 		}
 
-
 		/**
 		 * Get Templates
 		 *
@@ -1103,27 +1065,21 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			// phpcs:disable WordPress.PHP.NoSilencedErrors.Discouraged
 			$prefix = 'Job';
 
-			if ( ! isset( $prefix ) ) {
-				return array();
-			}
-
 			$dir = JB()->theme_templates;
 
-			/** @var $wp_filesystem \WP_Filesystem_Base */
 			global $wp_filesystem;
 
-			if ( ! is_a( $wp_filesystem, 'WP_Filesystem_Base' ) ) {
-				/** @noinspection PhpIncludeInspection */
+			if ( ! $wp_filesystem instanceof WP_Filesystem_Base ) {
 				require_once ABSPATH . 'wp-admin/includes/file.php';
 
 				$credentials = request_filesystem_credentials( site_url() );
-				\WP_Filesystem( $credentials );
+				WP_Filesystem( $credentials );
 			}
 
 			$templates = array();
 			if ( $wp_filesystem->is_dir( $dir ) ) {
 				$handle = @opendir( $dir );
-				// phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition -- reading folder's content here
+				// phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition -- reading folder's content here
 				while ( false !== ( $filename = readdir( $handle ) ) ) {
 					if ( '.' === $filename || '..' === $filename ) {
 						continue;
@@ -1143,10 +1099,9 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 						T_DOC_COMMENT, // PHPDoc comments
 					);
 					foreach ( $tokens as $token ) {
-						if ( in_array( $token[0], $comment, true ) && strstr( $token[1], '/* ' . $prefix . ' Template:' ) ) {
+						if ( in_array( $token[0], $comment, true ) && false !== strpos( $token[1], '/* ' . $prefix . ' Template:' ) ) {
 							$txt = $token[1];
-							$txt = str_replace( '/* ' . $prefix . ' Template: ', '', $txt );
-							$txt = str_replace( ' */', '', $txt );
+							$txt = str_replace( array( '/* ' . $prefix . ' Template: ', ' */' ), '', $txt );
 
 							$templates[ $clean_filename ] = $txt;
 						}
@@ -1161,22 +1116,19 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			// phpcs:enable WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 
-
 		/**
 		 * Get File Name without path and extension
 		 *
-		 * @param $file
+		 * @param string $file
 		 *
-		 * @return mixed|string
+		 * @return string
 		 *
 		 * @since 1.0
 		 */
 		public function get_template_name( $file ) {
 			$file = basename( $file );
-			$file = preg_replace( '/\\.[^.\\s]{3,4}$/', '', $file );
-			return $file;
+			return preg_replace( '/\\.[^.\\s]{3,4}$/', '', $file );
 		}
-
 
 		/**
 		 * Maintenance task to expire jobs.
@@ -1184,7 +1136,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 		 * @since 1.0
 		 */
 		public function check_for_expired_jobs() {
-			// Change status to expired.
+			// Change status to expire.
 			$job_ids = get_posts(
 				array(
 					'post_type'      => 'jb-job',
@@ -1288,7 +1240,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			}
 		}
 
-
 		/**
 		 * Maintenance task to send expiration reminders jobs.
 		 *
@@ -1391,6 +1342,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 							array(
 								'job_id'              => $job_id,
 								'job_title'           => get_the_title( $job_id ),
+								'job_author'          => $user->display_name,
 								'job_expiration_days' => $interval->format( '%a' ),
 								'view_job_url'        => get_permalink( $job_id ),
 							)
@@ -1399,7 +1351,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 				}
 			}
 		}
-
 
 		/**
 		 * Deletes old previewed jobs to keep the DB clean.
@@ -1430,7 +1381,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			}
 		}
 
-
 		/**
 		 * Make location data secured after the response from GoogleMaps API
 		 *
@@ -1439,10 +1389,8 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 		 * @return array|mixed|object
 		 */
 		public function sanitize_location_data( $data ) {
-			$data = $this->map_deep( $data, array( $this, 'sanitize_location_data_cb' ) );
-			return $data;
+			return $this->map_deep( $data, array( $this, 'sanitize_location_data_cb' ) );
 		}
-
 
 		/**
 		 * See the function's reference documented in wp-includes/formatting.php -> map_deep()
@@ -1477,7 +1425,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return $value;
 		}
 
-
 		/**
 		 * Sanitize Location Data response
 		 *
@@ -1504,7 +1451,6 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return $value;
 		}
 
-
 		/**
 		 * Validate URL string
 		 *
@@ -1527,42 +1473,42 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			return false;
 		}
 
-
 		/**
 		 * Recursive function for building categories tree
 		 *
 		 * @param array $terms
 		 * @param array $children Terms hierarchy
-		 * @param int $parent
+		 * @param int $parent_id
 		 * @param int $level
 		 *
 		 * @return array
 		 */
-		public function prepare_categories_options( $terms, $children, $parent = 0, $level = 0 ) {
+		public function prepare_categories_options( $terms, $children, $parent_id = 0, $level = 0 ) {
 			$structured_terms = array();
 
 			foreach ( $terms as $key => $term ) {
-				if ( (int) $term->parent !== $parent ) {
+				if ( (int) $term->parent !== $parent_id ) {
 					continue;
 				}
 
 				$term->level = $level;
 
-				$structured_terms[] = $term;
+				$structured_terms[] = array( $term );
 
 				unset( $terms[ $key ] );
 
 				if ( isset( $children[ $term->term_id ] ) ) {
-					$structured_terms = array_merge( $structured_terms, $this->prepare_categories_options( array_values( $terms ), $children, $term->term_id, $level + 1 ) );
+					$structured_terms[] = $this->prepare_categories_options( array_values( $terms ), $children, $term->term_id, $level + 1 );
 				}
 			}
+
+			$structured_terms = array_merge( ...$structured_terms );
 
 			return array_values( $structured_terms );
 		}
 
-
 		/**
-		 * @param \WP_Post $job
+		 * @param WP_Post|array $job
 		 *
 		 * @return bool
 		 */
@@ -1579,7 +1525,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 			);
 
 			// a fix for restored from trash pending jobs
-			if ( '__trashed' === substr( $job->post_name, 0, 9 ) ) {
+			if ( 0 === strpos( $job->post_name, '__trashed' ) ) {
 				$args['post_name'] = sanitize_title( $job->post_title );
 			}
 
@@ -1593,6 +1539,7 @@ if ( ! class_exists( 'jb\common\Job' ) ) {
 				$email_args = array(
 					'job_id'       => $job_id,
 					'job_title'    => $job->post_title,
+					'job_author'   => $user->display_name,
 					'view_job_url' => get_permalink( $job ),
 				);
 				JB()->common()->mail()->send( $user->user_email, 'job_approved', $email_args );

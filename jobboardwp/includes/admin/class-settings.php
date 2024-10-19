@@ -1,4 +1,8 @@
-<?php namespace jb\admin;
+<?php
+namespace jb\admin;
+
+use WP_Filesystem_Base;
+use function WP_Filesystem;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -38,24 +42,24 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 			add_action( 'current_screen', array( $this, 'conditional_includes' ) );
 			add_action( 'admin_init', array( $this, 'permalinks_save' ) );
 
-			add_action( 'jb_before_settings_email__content', array( $this, 'email_templates_list_table' ), 10 );
+			add_action( 'jb_before_settings_email__content', array( $this, 'email_templates_list_table' ) );
 			add_filter( 'jb_section_fields', array( $this, 'email_template_fields' ), 10, 2 );
 
-			add_action( 'init', array( $this, 'init' ), 10 );
+			add_action( 'init', array( $this, 'init' ) );
 
-			add_action( 'admin_init', array( $this, 'save_settings' ), 10 );
+			add_action( 'admin_init', array( $this, 'save_settings' ) );
 
 			add_filter( 'jb_change_settings_before_save', array( $this, 'save_email_templates' ) );
 
 			add_filter( 'jb_settings_custom_subtabs', array( $this, 'settings_custom_subtabs' ), 20, 2 );
 			add_filter( 'jb_settings_section_modules__content', array( $this, 'settings_modules_section' ), 20 );
 
-			add_filter( 'jb_settings', array( $this, 'sorting_modules_options' ), 9999, 1 );
+			add_filter( 'jb_settings', array( $this, 'sorting_modules_options' ), 9999 );
 
 			//custom content for override templates tab
-			add_action( 'plugins_loaded', array( $this, 'jb_check_template_version' ), 10 );
-			add_filter( 'jb_settings_custom_tabs', array( $this, 'add_custom_content_tab' ), 10 );
-			add_filter( 'jb_settings_section_override_templates__content', array( $this, 'override_templates_list_table' ), 10, 1 );
+			add_action( 'plugins_loaded', array( $this, 'jb_check_template_version' ) );
+			add_filter( 'jb_settings_custom_tabs', array( $this, 'add_custom_content_tab' ) );
+			add_filter( 'jb_settings_section_override_templates__content', array( $this, 'override_templates_list_table' ) );
 		}
 
 		public function add_custom_content_tab( $custom_array ) {
@@ -130,13 +134,11 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 			if ( empty( $modules ) ) {
 				return;
 			}
-			/** @noinspection PhpIncludeInspection */
 			include_once JB_PATH . 'includes/admin/class-modules-list-table.php';
 		}
 
 		/**
 		 * Handler for settings forms when "Save Settings" button click.
-		 *
 		 *
 		 * @since 1.0
 		 */
@@ -148,7 +150,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 					return;
 				}
 
-				if ( 'save' !== sanitize_key( $_POST['jb-settings-action'] ) || empty( $_POST['jb_options'] ) ) {
+				if ( empty( $_POST['jb_options'] ) || 'save' !== sanitize_key( $_POST['jb-settings-action'] ) ) {
 					return;
 				}
 
@@ -174,7 +176,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 				 *
 				 * @return {array} Job expiration date.
 				 */
-				$settings = apply_filters( 'jb_change_settings_before_save', $_POST['jb_options'] );
+				$settings = apply_filters( 'jb_change_settings_before_save', $_POST['jb_options'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- sanitized below in sanitize.
 
 				foreach ( $settings as $key => $value ) {
 					$key = sanitize_key( $key );
@@ -192,16 +194,16 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 								$value = absint( $value );
 								break;
 							case 'key':
-								$value = sanitize_key( $value );
+								$value = sanitize_key( wp_unslash( $value ) );
 								break;
 							case 'email':
-								$value = sanitize_email( $value );
+								$value = sanitize_email( wp_unslash( $value ) );
 								break;
 							case 'text':
-								$value = sanitize_text_field( $value );
+								$value = sanitize_text_field( wp_unslash( $value ) );
 								break;
 							case 'textarea':
-								$value = sanitize_textarea_field( $value );
+								$value = sanitize_textarea_field( wp_unslash( $value ) );
 								break;
 							default:
 								/**
@@ -216,7 +218,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 								 *
 								 * @return {mixed} Maybe sanitized option value.
 								 */
-								$value = apply_filters( 'jb_settings_sanitize_' . $key, $value );
+								$value = apply_filters( 'jb_settings_sanitize_' . $key, wp_unslash( $value ) );
 								break;
 						}
 					}
@@ -240,14 +242,13 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 					'update' => 'jb_settings_updated',
 				);
 				if ( ! empty( $_GET['tab'] ) ) {
-					$arg['tab'] = sanitize_key( $_GET['tab'] );
+					$arg['tab'] = sanitize_key( wp_unslash( $_GET['tab'] ) );
 				}
 				if ( ! empty( $_GET['section'] ) ) {
-					$arg['section'] = sanitize_key( $_GET['section'] );
+					$arg['section'] = sanitize_key( wp_unslash( $_GET['section'] ) );
 				}
 
-				// phpcs:ignore WordPress.Security.SafeRedirect -- admin screen redirect
-				wp_redirect( add_query_arg( $arg, admin_url( 'admin.php' ) ) );
+				wp_safe_redirect( add_query_arg( $arg, admin_url( 'admin.php' ) ) );
 				exit;
 			}
 		}
@@ -262,7 +263,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 		public function multi_email_sanitize( $value ) {
 			$emails_array = explode( ',', $value );
 			if ( ! empty( $emails_array ) ) {
-				$emails_array = array_map( 'sanitize_email', array_map( 'trim', $emails_array ) );
+				$emails_array = array_map( 'sanitize_email', array_map( 'trim', array_map( 'wp_unslash', $emails_array ) ) );
 			}
 
 			$emails_array = array_filter( array_unique( $emails_array ) );
@@ -828,11 +829,10 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 		 */
 		public function email_templates_list_table() {
 			// phpcs:ignore WordPress.Security.NonceVerification
-			$email_key           = empty( $_GET['email'] ) ? '' : sanitize_key( urldecode( $_GET['email'] ) );
+			$email_key           = empty( $_GET['email'] ) ? '' : sanitize_key( wp_unslash( $_GET['email'] ) );
 			$email_notifications = JB()->config()->get( 'email_notifications' );
 
 			if ( empty( $email_key ) || empty( $email_notifications[ $email_key ] ) ) {
-				/** @noinspection PhpIncludeInspection */
 				include_once JB()->admin()->templates_path . 'settings' . DIRECTORY_SEPARATOR . 'emails-list-table.php';
 			}
 		}
@@ -853,7 +853,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 			}
 
 			// phpcs:ignore WordPress.Security.NonceVerification
-			$email_key           = empty( $_GET['email'] ) ? '' : sanitize_key( urldecode( $_GET['email'] ) );
+			$email_key           = empty( $_GET['email'] ) ? '' : sanitize_key( wp_unslash( $_GET['email'] ) );
 			$email_notifications = JB()->config()->get( 'email_notifications' );
 
 			if ( empty( $email_key ) || empty( $email_notifications[ $email_key ] ) ) {
@@ -1022,7 +1022,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 		 */
 		public function tabs_menu() {
 			// phpcs:ignore WordPress.Security.NonceVerification
-			$current_tab = empty( $_GET['tab'] ) ? '' : sanitize_key( urldecode( $_GET['tab'] ) );
+			$current_tab = empty( $_GET['tab'] ) ? '' : sanitize_key( wp_unslash( $_GET['tab'] ) );
 			if ( empty( $current_tab ) ) {
 				$all_tabs    = array_keys( $this->config );
 				$current_tab = $all_tabs[0];
@@ -1049,7 +1049,6 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 
 				$active = ( $current_tab === $slug ) ? 'nav-tab-active' : '';
 
-				/** @noinspection HtmlUnknownTarget */
 				$tabs .= sprintf(
 					'<a href="%s" class="nav-tab %s">%s</a>',
 					esc_attr( $tab_link ),
@@ -1057,7 +1056,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 					esc_html( $tab['title'] )
 				);
 
-				$i++;
+				++$i;
 			}
 
 			return '<h2 class="nav-tab-wrapper jb-nav-tab-wrapper">' . $tabs . '</h2>';
@@ -1082,8 +1081,8 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 				return '';
 			}
 
-			$current_tab    = empty( $_GET['tab'] ) ? '' : sanitize_key( urldecode( $_GET['tab'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
-			$current_subtab = empty( $_GET['section'] ) ? '' : sanitize_key( urldecode( $_GET['section'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+			$current_tab    = empty( $_GET['tab'] ) ? '' : sanitize_key( wp_unslash( $_GET['tab'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+			$current_subtab = empty( $_GET['section'] ) ? '' : sanitize_key( wp_unslash( $_GET['section'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
 			if ( empty( $current_subtab ) ) {
 				$sections       = array_keys( $this->config[ $tab ]['sections'] );
 				$current_subtab = $sections[0];
@@ -1115,7 +1114,6 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 
 				$active = ( $current_subtab === $slug ) ? 'current' : '';
 
-				/** @noinspection HtmlUnknownTarget */
 				$subtabs .= sprintf(
 					'<a href="%s" class="%s">%s</a> | ',
 					esc_attr( $tab_link ),
@@ -1123,7 +1121,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 					esc_html( $subtab['title'] )
 				);
 
-				$i++;
+				++$i;
 			}
 
 			return '<div><ul class="subsubsub">' . substr( $subtabs, 0, -3 ) . '</ul></div>';
@@ -1270,12 +1268,11 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 		/**
 		 * @param $settings
 		 *
-		 * @global \WP_Filesystem_Base $wp_filesystem Subclass
+		 * @global WP_Filesystem_Base $wp_filesystem Subclass
 		 *
 		 * @return mixed
 		 */
 		public function save_email_templates( $settings ) {
-			/** @var $wp_filesystem \WP_Filesystem_Base */
 			global $wp_filesystem;
 
 			if ( empty( $settings['jb_email_template'] ) ) {
@@ -1283,7 +1280,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 			}
 
 			$template = sanitize_key( $settings['jb_email_template'] );
-			$content  = stripslashes( sanitize_textarea_field( $settings[ $template ] ) );
+			$content  = sanitize_textarea_field( wp_unslash( $settings[ $template ] ) );
 
 			$template_name = JB()->get_email_template( $template );
 			$module        = JB()->get_email_template_module( $template );
@@ -1302,7 +1299,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 				$blog_id = get_current_blog_id();
 
 				$ms_template_locations = array_map(
-					function( $item ) use ( $template_path, $blog_id ) {
+					function ( $item ) use ( $template_path, $blog_id ) {
 						return str_replace( trailingslashit( $template_path ), trailingslashit( $template_path ) . $blog_id . '/', $item );
 					},
 					$template_locations
@@ -1338,12 +1335,11 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 				$template_exists = JB()->locate_template_custom_path( $template_locations, $custom_path );
 			}
 
-			if ( ! is_a( $wp_filesystem, 'WP_Filesystem_Base' ) ) {
-				/** @noinspection PhpIncludeInspection */
+			if ( ! $wp_filesystem instanceof WP_Filesystem_Base ) {
 				require_once ABSPATH . 'wp-admin/includes/file.php';
 
 				$credentials = request_filesystem_credentials( self_admin_url() );
-				\WP_Filesystem( $credentials );
+				WP_Filesystem( $credentials );
 			}
 
 			if ( empty( $template_exists ) ) {
@@ -1368,20 +1364,19 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 			$result = $wp_filesystem->put_contents( $template_exists, $content );
 
 			if ( false !== $result ) {
-				unset( $settings['jb_email_template'] );
-				unset( $settings[ $template ] );
+				unset( $settings['jb_email_template'], $settings[ $template ] );
 			}
 
 			return $settings;
 		}
 
-		public function override_templates_list_table( $section_content ) {
+		public function override_templates_list_table() {
 			$jb_check_version = get_transient( 'jb_check_template_versions' );
 			ob_start();
 			?>
 
 			<p class="description" style="margin: 20px 0 0 0;">
-				<a href="<?php echo esc_url( add_query_arg( 'jb_adm_action', 'check_templates_version' ) ); ?>" class="button" style="margin-right: 10px;">
+				<a href="<?php echo esc_url( wp_nonce_url( add_query_arg( 'jb_adm_action', 'check_templates_version' ), 'jb_check_templates_version' ) ); ?>" class="button" style="margin-right: 10px;">
 					<?php esc_html_e( 'Re-check templates', 'jobboardwp' ); ?>
 				</a>
 				<?php
@@ -1395,16 +1390,13 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 			</p>
 			<p class="description" style="margin: 20px 0 0 0;">
 				<?php
-				/** @noinspection HtmlUnknownTarget */
 				// translators: %s: Link to the docs article.
 				echo wp_kses( sprintf( __( 'You may get more details about overriding templates <a href="%s" target="_blank">here</a>.', 'jobboardwp' ), 'https://docs.jobboardwp.com/article/1570-templates-structure' ), JB()->get_allowed_html( 'admin_notice' ) );
 				?>
 			</p>
 			<?php
 			include_once JB_PATH . 'includes/admin/templates/settings/version-template-list-table.php';
-
-			$section_content = ob_get_clean();
-			return $section_content;
+			return ob_get_clean();
 		}
 
 		/**
@@ -1428,7 +1420,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 		 */
 		public function get_override_templates( $get_list = false ) {
 			$outdated_files   = array();
-			$scan_files['jb'] = $this->scan_template_files( JB_PATH . '/templates/' );
+			$scan_files['jb'] = self::scan_template_files( JB_PATH . '/templates/' );
 
 			/**
 			 * Filters JobBoardWP templates files for scan versions and overriding.
@@ -1480,8 +1472,8 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 								$core_path      = JB_PATH . '/templates/' . $core_file;
 								$core_file_path = stristr( JB_PATH . 'templates/' . $core_file, 'wp-content' );
 							}
-							$core_version  = $this->get_file_version( $core_path );
-							$theme_version = $this->get_file_version( $theme_file );
+							$core_version  = self::get_file_version( $core_path );
+							$theme_version = self::get_file_version( $theme_file );
 
 							$status      = esc_html__( 'Theme version up to date', 'jobboardwp' );
 							$status_code = 1;
@@ -1531,7 +1523,7 @@ if ( ! class_exists( 'jb\admin\Settings' ) ) {
 			}
 
 			// We don't need to write to the file, so just open for reading.
-			$fp = fopen( $file, 'r' ); // @codingStandardsIgnoreLine.
+			$fp = fopen( $file, 'rb' ); // @codingStandardsIgnoreLine.
 
 			// Pull only the first 8kiB of the file in.
 			$file_data = fread( $fp, 8192 ); // @codingStandardsIgnoreLine.

@@ -1,4 +1,9 @@
-<?php namespace jb\frontend;
+<?php
+namespace jb\frontend;
+
+use WP_Error;
+use WP_Filesystem_Base;
+use function WP_Filesystem;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -17,8 +22,8 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 		 * Actions_Listener constructor.
 		 */
 		public function __construct() {
-			add_action( 'wp_loaded', array( $this, 'actions_listener' ), 10 );
-			add_filter( 'jb_job_submitted_data', array( $this, 'add_location_data' ), 10, 1 );
+			add_action( 'wp_loaded', array( $this, 'actions_listener' ) );
+			add_filter( 'jb_job_submitted_data', array( $this, 'add_location_data' ) );
 		}
 
 		/**
@@ -37,11 +42,11 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 				return $job_data;
 			}
 
-			$location_data = json_decode( stripslashes( $_POST['job_location_data'] ) );
+			$location_data = json_decode( wp_unslash( $_POST['job_location_data'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized just below
 			$location_data = JB()->common()->job()->sanitize_location_data( $location_data );
 
 			$job_data['meta_input']['jb-location-raw-data'] = $location_data;
-			if ( isset( $location_data->geometry ) && isset( $location_data->geometry->location ) ) {
+			if ( isset( $location_data->geometry, $location_data->geometry->location ) ) {
 				if ( isset( $location_data->geometry->location->lat ) ) {
 					$job_data['meta_input']['jb-location-lat'] = sanitize_text_field( $location_data->geometry->location->lat );
 				}
@@ -84,14 +89,14 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 		 * Handle posting a job form and maybe create user if the form data is proper
 		 * $_POST validation on form submission
 		 *
-		 * @return int|\WP_Error
+		 * @return int|WP_Error
 		 *
 		 * @since 1.0
 		 */
 		public function maybe_create_user() {
 			// phpcs:disable WordPress.Security.NonceVerification -- already verified here
 			/**
-			 * @var $posting_form \jb\frontend\Forms
+			 * @var $posting_form Forms
 			 */
 			global $posting_form;
 
@@ -115,8 +120,8 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 					$username     = '';
 					$password     = '';
 					$author_email = '';
-					$author_fname = ! empty( $_POST['author_first_name'] ) ? sanitize_text_field( $_POST['author_first_name'] ) : '';
-					$author_lname = ! empty( $_POST['author_last_name'] ) ? sanitize_text_field( $_POST['author_last_name'] ) : '';
+					$author_fname = ! empty( $_POST['author_first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['author_first_name'] ) ) : '';
+					$author_lname = ! empty( $_POST['author_last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['author_last_name'] ) ) : '';
 
 					if ( JB()->options()->get( 'full-name-required' ) ) {
 						if ( empty( $author_fname ) ) {
@@ -131,7 +136,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 					if ( empty( $_POST['author_email'] ) ) {
 						$posting_form->add_error( 'author_email', __( 'Please fill email address', 'jobboardwp' ) );
 					} else {
-						$author_email = sanitize_email( trim( $_POST['author_email'] ) );
+						$author_email = trim( sanitize_email( wp_unslash( $_POST['author_email'] ) ) );
 
 						if ( ! is_email( $author_email ) ) {
 							$posting_form->add_error( 'author_email', __( 'Wrong email address format', 'jobboardwp' ) );
@@ -153,8 +158,8 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 								$posting_form->add_error( 'author_password_confirm', __( 'Please confirm the password', 'jobboardwp' ) );
 							}
 						} else {
-							$password         = sanitize_text_field( trim( $_POST['author_password'] ) );
-							$password_confirm = sanitize_text_field( trim( $_POST['author_password_confirm'] ) );
+							$password         = trim( $_POST['author_password'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- don't sanitize pass
+							$password_confirm = trim( $_POST['author_password_confirm'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- don't sanitize pass
 							$min_length       = 8;
 							$max_length       = 30;
 
@@ -162,16 +167,16 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 								$posting_form->add_error( 'author_password_confirm', __( 'Your passwords do not match', 'jobboardwp' ) );
 							}
 
-							if ( mb_strlen( $_POST['author_password'] ) < $min_length ) {
+							if ( mb_strlen( $password ) < $min_length ) {
 								$posting_form->add_error( 'author_password', __( 'Your password must contain at least 8 characters', 'jobboardwp' ) );
 							}
 
-							if ( mb_strlen( $_POST['author_password'] ) > $max_length ) {
+							if ( mb_strlen( $password ) > $max_length ) {
 								$posting_form->add_error( 'author_password', __( 'Your password must contain less than 30 characters', 'jobboardwp' ) );
 							}
 
-							$pattern = '/^(?=.*[0-9])(?=.*[A-Z]).{8,20}$/';
-							if ( ! preg_match( $pattern, $_POST['author_password'] ) ) {
+							$pattern = '/^(?=.*\d)(?=.*[A-Z]).{8,20}$/';
+							if ( ! preg_match( $pattern, $password ) ) {
 								$posting_form->add_error( 'author_password', __( 'Your password must contain at least one lowercase letter, one capital letter and one number', 'jobboardwp' ) );
 							}
 						}
@@ -205,7 +210,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						if ( empty( $_POST['author_username'] ) ) {
 							$posting_form->add_error( 'author_username', __( 'Username is required', 'jobboardwp' ) );
 						} else {
-							$username = sanitize_user( trim( $_POST['author_username'] ) );
+							$username = trim( sanitize_user( wp_unslash( $_POST['author_username'] ) ) );
 							if ( username_exists( $username ) ) {
 								$posting_form->add_error( 'author_username', __( 'Please use another username', 'jobboardwp' ) );
 							}
@@ -219,7 +224,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 
 						while ( username_exists( $username ) ) {
 							$username = $o_username . $append;
-							$append ++;
+							++$append;
 						}
 					}
 
@@ -270,118 +275,115 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						//Notify admin or user + admin about new user registration
 						wp_new_user_notification( $user_id, null, $notify );
 					}
-				} else {
+				} elseif ( ( ! empty( $_POST['author_email'] ) && JB()->options()->get( 'account-username-generate' ) ) || ( ! empty( $_POST['author_email'] ) && ! empty( $_POST['author_username'] ) && ! JB()->options()->get( 'account-username-generate' ) ) ) {
+					$author_email = trim( sanitize_email( wp_unslash( $_POST['author_email'] ) ) );
 
-					if ( ( ! empty( $_POST['author_email'] ) && JB()->options()->get( 'account-username-generate' ) ) || ( ! empty( $_POST['author_email'] ) && ! empty( $_POST['author_username'] ) && ! JB()->options()->get( 'account-username-generate' ) ) ) {
-						$author_email = sanitize_email( trim( $_POST['author_email'] ) );
+					if ( ! is_email( $author_email ) ) {
+						$posting_form->add_error( 'author_email', __( 'Wrong email address format', 'jobboardwp' ) );
+					}
 
-						if ( ! is_email( $author_email ) ) {
-							$posting_form->add_error( 'author_email', __( 'Wrong email address format', 'jobboardwp' ) );
+					if ( email_exists( $author_email ) ) {
+						$posting_form->add_error( 'author_email', __( 'Please use another email address', 'jobboardwp' ) );
+					}
+
+					$username     = '';
+					$password     = '';
+					$author_fname = ! empty( $_POST['author_first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['author_first_name'] ) ) : '';
+					$author_lname = ! empty( $_POST['author_last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['author_last_name'] ) ) : '';
+
+					if ( JB()->options()->get( 'full-name-required' ) ) {
+						if ( empty( $author_fname ) ) {
+							$posting_form->add_error( 'author_first_name', __( 'Please fill the first name field.', 'jobboardwp' ) );
 						}
 
-						if ( email_exists( $author_email ) ) {
-							$posting_form->add_error( 'author_email', __( 'Please use another email address', 'jobboardwp' ) );
+						if ( empty( $author_lname ) ) {
+							$posting_form->add_error( 'author_last_name', __( 'Please fill the last name field.', 'jobboardwp' ) );
 						}
+					}
 
-						$username     = '';
-						$password     = '';
-						$author_fname = ! empty( $_POST['author_first_name'] ) ? sanitize_text_field( $_POST['author_first_name'] ) : '';
-						$author_lname = ! empty( $_POST['author_last_name'] ) ? sanitize_text_field( $_POST['author_last_name'] ) : '';
-
-						if ( JB()->options()->get( 'full-name-required' ) ) {
-							if ( empty( $author_fname ) ) {
-								$posting_form->add_error( 'author_first_name', __( 'Please fill the first name field.', 'jobboardwp' ) );
+					$notify = 'admin';
+					if ( ! JB()->options()->get( 'account-password-email' ) ) {
+						if ( empty( $_POST['author_password'] ) || empty( $_POST['author_password_confirm'] ) ) {
+							if ( empty( $_POST['author_password'] ) ) {
+								$posting_form->add_error( 'author_password', __( 'Password is required', 'jobboardwp' ) );
 							}
 
-							if ( empty( $author_lname ) ) {
-								$posting_form->add_error( 'author_last_name', __( 'Please fill the last name field.', 'jobboardwp' ) );
-							}
-						}
-
-						$notify = 'admin';
-						if ( ! JB()->options()->get( 'account-password-email' ) ) {
-							if ( empty( $_POST['author_password'] ) || empty( $_POST['author_password_confirm'] ) ) {
-								if ( empty( $_POST['author_password'] ) ) {
-									$posting_form->add_error( 'author_password', __( 'Password is required', 'jobboardwp' ) );
-								}
-
-								if ( empty( $_POST['author_password_confirm'] ) ) {
-									$posting_form->add_error( 'author_password_confirm', __( 'Please confirm the password', 'jobboardwp' ) );
-								}
-							} else {
-								$password         = sanitize_text_field( trim( $_POST['author_password'] ) );
-								$password_confirm = sanitize_text_field( trim( $_POST['author_password_confirm'] ) );
-
-								if ( $password !== $password_confirm ) {
-									$posting_form->add_error( 'author_password_confirm', __( 'Your passwords do not match', 'jobboardwp' ) );
-								}
+							if ( empty( $_POST['author_password_confirm'] ) ) {
+								$posting_form->add_error( 'author_password_confirm', __( 'Please confirm the password', 'jobboardwp' ) );
 							}
 						} else {
-							// User is forced to set up account with email sent to them. This password will remain a secret.
-							$password = wp_generate_password();
-							$notify   = 'both';
+							$password         = trim( $_POST['author_password'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- don't sanitize pass
+							$password_confirm = trim( $_POST['author_password_confirm'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- don't sanitize pass
 
-							/** This filter is documented in includes/frontend/class-actions-listener.php */
-							$notify = apply_filters( 'jb_job_email_notify', $notify );
-						}
-
-						if ( ! JB()->options()->get( 'account-username-generate' ) ) {
-							if ( ! empty( $_POST['author_username'] ) ) {
-								$username = sanitize_user( trim( $_POST['author_username'] ) );
-								if ( username_exists( $username ) ) {
-									$posting_form->add_error( 'author_username', __( 'Please use another username', 'jobboardwp' ) );
-								}
-							}
-						} else {
-							$username = sanitize_user( current( explode( '@', $author_email ) ), true );
-
-							// Ensure username is unique.
-							$append     = 1;
-							$o_username = $username;
-
-							while ( username_exists( $username ) ) {
-								$username = $o_username . $append;
-								$append ++;
+							if ( $password !== $password_confirm ) {
+								$posting_form->add_error( 'author_password_confirm', __( 'Your passwords do not match', 'jobboardwp' ) );
 							}
 						}
+					} else {
+						// User is forced to set up account with email sent to them. This password will remain a secret.
+						$password = wp_generate_password();
+						$notify   = 'both';
 
-						if ( ! $posting_form->has_errors() ) {
-							// Create account.
-							$userdata = array(
-								'user_login' => $username,
-								'user_pass'  => $password,
-								'user_email' => $author_email,
-								'role'       => JB()->options()->get( 'account-role' ),
-								'first_name' => $author_fname,
-								'last_name'  => $author_lname,
-							);
+						/** This filter is documented in includes/frontend/class-actions-listener.php */
+						$notify = apply_filters( 'jb_job_email_notify', $notify );
+					}
+
+					if ( ! JB()->options()->get( 'account-username-generate' ) ) {
+						if ( ! empty( $_POST['author_username'] ) ) {
+							$username = trim( sanitize_user( wp_unslash( $_POST['author_username'] ) ) );
+							if ( username_exists( $username ) ) {
+								$posting_form->add_error( 'author_username', __( 'Please use another username', 'jobboardwp' ) );
+							}
+						}
+					} else {
+						$username = sanitize_user( current( explode( '@', $author_email ) ), true );
+
+						// Ensure username is unique.
+						$append     = 1;
+						$o_username = $username;
+
+						while ( username_exists( $username ) ) {
+							$username = $o_username . $append;
+							++$append;
+						}
+					}
+
+					if ( ! $posting_form->has_errors() ) {
+						// Create account.
+						$userdata = array(
+							'user_login' => $username,
+							'user_pass'  => $password,
+							'user_email' => $author_email,
+							'role'       => JB()->options()->get( 'account-role' ),
+							'first_name' => $author_fname,
+							'last_name'  => $author_lname,
+						);
+						/** This action is documented in includes/frontend/class-actions-listener.php */
+						$userdata = apply_filters( 'jb_job_submission_create_account_data', $userdata );
+
+						$user_id = wp_insert_user( $userdata );
+
+						if ( ! is_wp_error( $user_id ) ) {
 							/** This action is documented in includes/frontend/class-actions-listener.php */
-							$userdata = apply_filters( 'jb_job_submission_create_account_data', $userdata );
-
-							$user_id = wp_insert_user( $userdata );
-
-							if ( ! is_wp_error( $user_id ) ) {
-								/** This action is documented in includes/frontend/class-actions-listener.php */
-								do_action( 'jb_job_submission_after_create_account', $user_id );
-							}
-
-							// Login here
-							add_action( 'set_logged_in_cookie', array( $this, 'update_global_login_cookie' ) );
-							wp_set_auth_cookie( $user_id, true, is_ssl() );
-							wp_set_current_user( $user_id );
-							remove_action( 'set_logged_in_cookie', array( $this, 'update_global_login_cookie' ) );
-
-							//Notify admin or user + admin about new user registration
-							wp_new_user_notification( $user_id, null, $notify );
+							do_action( 'jb_job_submission_after_create_account', $user_id );
 						}
+
+						// Login here
+						add_action( 'set_logged_in_cookie', array( $this, 'update_global_login_cookie' ) );
+						wp_set_auth_cookie( $user_id, true, is_ssl() );
+						wp_set_current_user( $user_id );
+						remove_action( 'set_logged_in_cookie', array( $this, 'update_global_login_cookie' ) );
+
+						//Notify admin or user + admin about new user registration
+						wp_new_user_notification( $user_id, null, $notify );
 					}
 				}
 			} else {
 				$your_details_enabled = JB()->options()->get( 'your-details-section' );
 				if ( ! empty( $your_details_enabled ) ) {
 					$author_email = '';
-					$author_fname = ! empty( $_POST['author_first_name'] ) ? sanitize_text_field( $_POST['author_first_name'] ) : '';
-					$author_lname = ! empty( $_POST['author_last_name'] ) ? sanitize_text_field( $_POST['author_last_name'] ) : '';
+					$author_fname = ! empty( $_POST['author_first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['author_first_name'] ) ) : '';
+					$author_lname = ! empty( $_POST['author_last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['author_last_name'] ) ) : '';
 
 					$current_userdata = get_userdata( $user_id );
 					$last_email       = $current_userdata->user_email;
@@ -399,7 +401,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 					if ( empty( $_POST['author_email'] ) ) {
 						$posting_form->add_error( 'author_email', __( 'Please fill email address', 'jobboardwp' ) );
 					} else {
-						$author_email = sanitize_email( trim( $_POST['author_email'] ) );
+						$author_email = trim( sanitize_email( wp_unslash( $_POST['author_email'] ) ) );
 
 						if ( $last_email !== $author_email ) {
 							if ( ! is_email( $author_email ) ) {
@@ -461,6 +463,8 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 		 * @since 1.0
 		 */
 		public function actions_listener() {
+			global $wp_filesystem;
+
 			if ( ! empty( $_POST['jb-action'] ) ) {
 				// phpcs:ignore WordPress.Security.NonceVerification -- there is nonce verification for each case below
 				switch ( sanitize_key( $_POST['jb-action'] ) ) {
@@ -471,11 +475,11 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 
 						$posting_form->flush_errors();
 
-						if ( empty( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( $_POST['nonce'] ), 'jb-job-submission' ) ) {
+						if ( empty( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'jb-job-submission' ) ) {
 							$posting_form->add_error( 'global', __( 'Security issue, Please try again', 'jobboardwp' ) );
 						}
 
-						if ( ! isset( $_POST['jb-job-submission-step'] ) || ( 'draft' === sanitize_key( $_POST['jb-job-submission-step'] ) && ! is_user_logged_in() && ! JB()->options()->get( 'account-creation' ) && ! JB()->options()->get( 'account-required' ) ) ) {
+						if ( ! isset( $_POST['jb-job-submission-step'] ) || ( 'draft' === sanitize_key( wp_unslash( $_POST['jb-job-submission-step'] ) ) && ! is_user_logged_in() && ! JB()->options()->get( 'account-creation' ) && ! JB()->options()->get( 'account-required' ) ) ) {
 							$posting_form->add_error( 'global', __( 'You cannot save draft jobs, Please try again', 'jobboardwp' ) );
 						}
 
@@ -485,7 +489,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						$nonce_action = '';
 						if ( empty( $user_id ) ) {
 							if ( isset( $_COOKIE['jb-guest-job-posting'] ) ) {
-								$nonce_action = 'jb-guest-job-posting' . sanitize_text_field( $_COOKIE['jb-guest-job-posting'] );
+								$nonce_action = 'jb-guest-job-posting' . sanitize_text_field( wp_unslash( $_COOKIE['jb-guest-job-posting'] ) );
 							} else {
 								$uniqid = uniqid();
 								JB()->setcookie( 'jb-guest-job-posting', $uniqid, time() + HOUR_IN_SECONDS );
@@ -501,7 +505,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 								$is_edited = true;
 
 								if ( ! empty( $user_id ) ) {
-									if ( absint( $job->post_author ) !== absint( $user_id ) && ! user_can( $user_id, 'edit_post', $job_id ) ) {
+									if ( ! user_can( $user_id, 'edit_post', $job_id ) && absint( $job->post_author ) !== absint( $user_id ) ) {
 										$posting_form->add_error( 'global', __( 'Security action, Please try again with another job.', 'jobboardwp' ) );
 									}
 								} else {
@@ -522,7 +526,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						if ( empty( $_POST['job_title'] ) ) {
 							$posting_form->add_error( 'job_title', __( 'Job title cannot be empty', 'jobboardwp' ) );
 						} else {
-							$title = sanitize_text_field( $_POST['job_title'] );
+							$title = sanitize_text_field( wp_unslash( $_POST['job_title'] ) );
 							if ( empty( $title ) ) {
 								$posting_form->add_error( 'job_title', __( 'Job title cannot be empty', 'jobboardwp' ) );
 							}
@@ -531,7 +535,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						if ( empty( $_POST['job_description'] ) ) {
 							$posting_form->add_error( 'job_description', __( 'Job description cannot be empty', 'jobboardwp' ) );
 						} else {
-							$content = wp_kses_post( $_POST['job_description'] );
+							$content = wp_kses_post( wp_unslash( $_POST['job_description'] ) );
 							if ( empty( $content ) ) {
 								$posting_form->add_error( 'job_description', __( 'Job description cannot be empty', 'jobboardwp' ) );
 							}
@@ -542,28 +546,28 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						} else {
 							switch ( JB()->options()->get( 'application-method' ) ) {
 								case 'email':
-									$app_contact = sanitize_email( $_POST['job_application'] );
+									$app_contact = sanitize_email( wp_unslash( $_POST['job_application'] ) );
 									if ( ! is_email( $app_contact ) ) {
 										$posting_form->add_error( 'job_application', __( 'Job application must be an email address', 'jobboardwp' ) );
 									}
 									break;
 								case 'url':
-									$app_contact = sanitize_text_field( $_POST['job_application'] );
+									$app_contact = sanitize_text_field( wp_unslash( $_POST['job_application'] ) );
 									// Prefix http if needed.
-									if ( ! strstr( $app_contact, 'http:' ) && ! strstr( $app_contact, 'https:' ) ) {
-										$app_contact = 'http://' . $app_contact;
+									if ( false === strpos( $app_contact, 'http:' ) && false === strpos( $app_contact, 'https:' ) ) {
+										$app_contact = 'https://' . $app_contact;
 									}
-									if ( ! JB()->common()->job()->validate_url( $app_contact ) || is_email( $app_contact ) ) {
+									if ( is_email( $app_contact ) || ! JB()->common()->job()->validate_url( $app_contact ) ) {
 										$posting_form->add_error( 'job_application', __( 'Job application must be an URL', 'jobboardwp' ) );
 									}
 									break;
 								default:
-									$app_contact = sanitize_email( $_POST['job_application'] );
+									$app_contact = sanitize_email( wp_unslash( $_POST['job_application'] ) );
 									if ( ! is_email( $app_contact ) ) {
-										$app_contact = sanitize_text_field( $_POST['job_application'] );
+										$app_contact = sanitize_text_field( wp_unslash( $_POST['job_application'] ) );
 										// Prefix http if needed.
-										if ( ! strstr( $app_contact, 'http:' ) && ! strstr( $app_contact, 'https:' ) ) {
-											$app_contact = 'http://' . $app_contact;
+										if ( false === strpos( $app_contact, 'http:' ) && false === strpos( $app_contact, 'https:' ) ) {
+											$app_contact = 'https://' . $app_contact;
 										}
 										if ( ! JB()->common()->job()->validate_url( $app_contact ) ) {
 											$posting_form->add_error( 'job_application', __( 'Job application must be an email address or URL', 'jobboardwp' ) );
@@ -578,48 +582,46 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						if ( ! isset( $_POST['job_location_type'] ) ) {
 							$posting_form->add_error( 'job_location', __( 'Job location type invalid', 'jobboardwp' ) );
 						} else {
-							$location_type = sanitize_text_field( $_POST['job_location_type'] );
+							$location_type = sanitize_text_field( wp_unslash( $_POST['job_location_type'] ) );
 							if ( '0' === $location_type ) {
 								if ( empty( $_POST['job_location'] ) ) {
 									$posting_form->add_error( 'job_location', __( 'Location for onsite job is required', 'jobboardwp' ) );
 								} else {
-									$location = sanitize_text_field( $_POST['job_location'] );
+									$location = sanitize_text_field( wp_unslash( $_POST['job_location'] ) );
 								}
 							} else {
-								$location = ! empty( $_POST['job_location'] ) ? sanitize_text_field( $_POST['job_location'] ) : '';
+								$location = ! empty( $_POST['job_location'] ) ? sanitize_text_field( wp_unslash( $_POST['job_location'] ) ) : '';
 							}
 						}
 
-						if ( JB()->options()->get( 'required-job-type' ) ) {
-							if ( ! isset( $_POST['job_type'] ) || empty( $_POST['job_type'] ) ) {
-								$posting_form->add_error( 'job_type', __( 'Job type is required', 'jobboardwp' ) );
-							}
+						if ( empty( $_POST['job_type'] ) && JB()->options()->get( 'required-job-type' ) ) {
+							$posting_form->add_error( 'job_type', __( 'Job type is required', 'jobboardwp' ) );
 						}
 
 						// handle company details
 						if ( empty( $_POST['company_name'] ) ) {
 							$posting_form->add_error( 'company_name', __( 'Company name cannot be empty', 'jobboardwp' ) );
 						} else {
-							$company_name = sanitize_text_field( $_POST['company_name'] );
+							$company_name = sanitize_text_field( wp_unslash( $_POST['company_name'] ) );
 							if ( empty( $company_name ) ) {
 								$posting_form->add_error( 'company_name', __( 'Company name cannot be empty', 'jobboardwp' ) );
 							}
 						}
 
-						$company_website = ! empty( $_POST['company_website'] ) ? sanitize_text_field( $_POST['company_website'] ) : '';
+						$company_website = ! empty( $_POST['company_website'] ) ? sanitize_text_field( wp_unslash( $_POST['company_website'] ) ) : '';
 						if ( ! empty( $company_website ) ) {
 							// Prefix http if needed.
-							if ( ! strstr( $company_website, 'http:' ) && ! strstr( $company_website, 'https:' ) ) {
-								$company_website = 'http://' . $company_website;
+							if ( false === strpos( $company_website, 'http:' ) && false === strpos( $company_website, 'https:' ) ) {
+								$company_website = 'https://' . $company_website;
 							}
 							if ( ! filter_var( $company_website, FILTER_VALIDATE_URL ) ) {
 								$posting_form->add_error( 'company_website', __( 'Company website is invalid', 'jobboardwp' ) );
 							}
 						}
 
-						$company_tagline = ! empty( $_POST['company_tagline'] ) ? sanitize_text_field( $_POST['company_tagline'] ) : '';
+						$company_tagline = ! empty( $_POST['company_tagline'] ) ? sanitize_text_field( wp_unslash( $_POST['company_tagline'] ) ) : '';
 
-						$company_twitter = ! empty( $_POST['company_twitter'] ) ? sanitize_text_field( $_POST['company_twitter'] ) : '';
+						$company_twitter = ! empty( $_POST['company_twitter'] ) ? sanitize_text_field( wp_unslash( $_POST['company_twitter'] ) ) : '';
 						if ( ! empty( $company_twitter ) ) {
 							if ( 0 === strpos( $company_twitter, '@' ) ) {
 								$company_twitter = substr( $company_twitter, 1 );
@@ -628,7 +630,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 							if ( ! empty( $company_twitter ) ) {
 
 								$validate_company_twitter = $company_twitter;
-								if ( ! strstr( $company_twitter, 'https://twitter.com/' ) ) {
+								if ( false === strpos( $company_twitter, 'https://twitter.com/' ) ) {
 									$validate_company_twitter = 'https://twitter.com/' . $company_twitter;
 								}
 
@@ -638,10 +640,10 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 							}
 						}
 
-						$company_facebook = ! empty( $_POST['company_facebook'] ) ? sanitize_text_field( $_POST['company_facebook'] ) : '';
+						$company_facebook = ! empty( $_POST['company_facebook'] ) ? sanitize_text_field( wp_unslash( $_POST['company_facebook'] ) ) : '';
 						if ( ! empty( $company_facebook ) ) {
 							$validate_company_facebook = $company_facebook;
-							if ( ! strstr( $company_facebook, 'https://facebook.com/' ) ) {
+							if ( false === strpos( $company_facebook, 'https://facebook.com/' ) ) {
 								$validate_company_facebook = 'https://facebook.com/' . $company_facebook;
 							}
 
@@ -650,10 +652,10 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 							}
 						}
 
-						$company_instagram = ! empty( $_POST['company_instagram'] ) ? sanitize_text_field( $_POST['company_instagram'] ) : '';
+						$company_instagram = ! empty( $_POST['company_instagram'] ) ? sanitize_text_field( wp_unslash( $_POST['company_instagram'] ) ) : '';
 						if ( ! empty( $company_instagram ) ) {
 							$validate_company_instagram = $company_instagram;
-							if ( ! strstr( $company_instagram, 'https://instagram.com/' ) ) {
+							if ( false === strpos( $company_instagram, 'https://instagram.com/' ) ) {
 								$validate_company_instagram = 'https://instagram.com/' . $company_instagram;
 							}
 
@@ -663,19 +665,26 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						}
 
 						$status = 'draft';
-						if ( isset( $_POST['jb-job-submission-step'] ) && 'preview' === sanitize_key( $_POST['jb-job-submission-step'] ) ) {
+						if ( isset( $_POST['jb-job-submission-step'] ) && 'preview' === sanitize_key( wp_unslash( $_POST['jb-job-submission-step'] ) ) ) {
 							$status = 'jb-preview';
 						}
 
 						$company_logo   = '';
 						$set_attachment = false;
 						if ( ! empty( $_POST['company_logo'] ) && ! empty( $_POST['company_logo_hash'] ) ) {
-							// new company logo has been uploaded so we need to update current user logo
-							if ( md5( sanitize_file_name( $_POST['company_logo'] ) . '_jb_uploader_security_salt' ) !== sanitize_key( $_POST['company_logo_hash'] ) ) {
+							// new company logo has been uploaded, so we need to update current user logo
+							if ( md5( sanitize_file_name( wp_unslash( $_POST['company_logo'] ) ) . '_jb_uploader_security_salt' ) !== sanitize_key( wp_unslash( $_POST['company_logo_hash'] ) ) ) {
 								// invalid salt for company logo, it's for the security enhancements
 								$posting_form->add_error( 'company_logo', __( 'Something wrong with image, please re-upload', 'jobboardwp' ) );
 							} else {
-								$company_logo_temp = sanitize_file_name( $_POST['company_logo'] );
+								if ( ! $wp_filesystem instanceof WP_Filesystem_Base ) {
+									require_once ABSPATH . 'wp-admin/includes/file.php';
+
+									$credentials = request_filesystem_credentials( site_url() );
+									WP_Filesystem( $credentials );
+								}
+
+								$company_logo_temp = sanitize_file_name( wp_unslash( $_POST['company_logo'] ) );
 
 								if ( is_multisite() ) {
 									$main_blog = get_network()->site_id;
@@ -703,7 +712,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 
 								if ( ! $is_edited ) {
 									// change Company data for the employer only in case if the posting new job, not while editing existed job
-									if ( file_exists( $oldname ) && rename( $oldname, $newname ) ) {
+									if ( file_exists( $oldname ) && $wp_filesystem->move( $oldname, $newname, true ) ) {
 										$company_logo   = trailingslashit( $logos_url ) . $user_id . '.' . $type['ext'];
 										$set_attachment = true;
 									}
@@ -714,10 +723,10 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 							}
 						} elseif ( ! empty( $_POST['company_logo'] ) ) {
 							// post a job with regular company logo that hasn't been changed when posting a job
-							$company_logo_post = ! empty( $_POST['company_logo'] ) ? sanitize_text_field( $_POST['company_logo'] ) : '';
+							$company_logo_post = sanitize_text_field( wp_unslash( $_POST['company_logo'] ) );
 
 							if ( ! filter_var( $company_logo_post, FILTER_VALIDATE_URL ) ) {
-								// company logo must be an URL
+								// company logo must be a URL
 								$posting_form->add_error( 'company_logo', __( 'Wrong image URL. Invalid URL', 'jobboardwp' ) );
 
 							} else {
@@ -755,7 +764,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 
 										} else {
 
-											$image = wp_get_attachment_image_src( $attachment_id, 'thumbnail' );
+											$image = wp_get_attachment_image_src( $attachment_id );
 
 											if ( ! isset( $image[0] ) || $company_logo_post !== $image[0] ) {
 												$posting_form->add_error( 'company_logo', __( 'Wrong image URL. Invalid attachment path', 'jobboardwp' ) );
@@ -773,45 +782,41 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						}
 
 						if ( JB()->options()->get( 'job-salary' ) ) {
-							if ( JB()->options()->get( 'required-job-salary' ) && empty( $_POST['job_salary_type'] ) ) {
+							if ( empty( $_POST['job_salary_type'] ) && JB()->options()->get( 'required-job-salary' ) ) {
 								$posting_form->add_error( 'job_salary_type', __( 'Job salary type is required', 'jobboardwp' ) );
 							} else {
-								$salary_type = sanitize_key( $_POST['job_salary_type'] );
+								$salary_type = sanitize_key( wp_unslash( $_POST['job_salary_type'] ) );
 								if ( '' !== $salary_type ) {
 									if ( empty( $_POST['job_salary_amount_type'] ) ) {
 										$posting_form->add_error( 'job_salary_amount_type', __( 'Job salary type is required', 'jobboardwp' ) );
 									} else {
-										$salary_amount_type = sanitize_key( $_POST['job_salary_amount_type'] );
+										$salary_amount_type = sanitize_key( wp_unslash( $_POST['job_salary_amount_type'] ) );
 										if ( 'numeric' === $salary_amount_type ) {
 											if ( empty( $_POST['job_salary_amount'] ) ) {
 												$posting_form->add_error( 'job_salary_amount', __( 'Job salary amount is required and must be more than 0', 'jobboardwp' ) );
+											} elseif ( ! is_numeric( $_POST['job_salary_amount'] ) ) {
+												$posting_form->add_error( 'job_salary_amount', __( 'Job salary amount must be numeric', 'jobboardwp' ) );
 											} else {
-												if ( ! is_numeric( $_POST['job_salary_amount'] ) ) {
-													$posting_form->add_error( 'job_salary_amount', __( 'Job salary amount must be numeric', 'jobboardwp' ) );
-												} else {
-													$job_amount = absint( $_POST['job_salary_amount'] );
-												}
+												$job_amount = absint( $_POST['job_salary_amount'] );
 											}
+										} elseif ( empty( $_POST['job_salary_min_amount'] ) && empty( $_POST['job_salary_max_amount'] ) ) {
+											$posting_form->add_error( 'job_salary_min_amount', __( 'Job salary amount is required', 'jobboardwp' ) );
+											$posting_form->add_error( 'job_salary_max_amount', __( 'Job salary amount is required', 'jobboardwp' ) );
 										} else {
-											if ( empty( $_POST['job_salary_min_amount'] ) && empty( $_POST['job_salary_max_amount'] ) ) {
-												$posting_form->add_error( 'job_salary_min_amount', __( 'Job salary amount is required', 'jobboardwp' ) );
-												$posting_form->add_error( 'job_salary_max_amount', __( 'Job salary amount is required', 'jobboardwp' ) );
+											if ( ! is_numeric( $_POST['job_salary_min_amount'] ) ) {
+												$posting_form->add_error( 'job_salary_min_amount', __( 'Job salary amount must be numeric', 'jobboardwp' ) );
+											} elseif ( 0 !== absint( $_POST['job_salary_max_amount'] ) && absint( $_POST['job_salary_min_amount'] ) >= absint( $_POST['job_salary_max_amount'] ) ) {
+												$posting_form->add_error( 'job_salary_min_amount', __( 'Job minimum salary must be lower than maximum salary', 'jobboardwp' ) );
 											} else {
-												if ( ! is_numeric( $_POST['job_salary_min_amount'] ) ) {
-													$posting_form->add_error( 'job_salary_min_amount', __( 'Job salary amount must be numeric', 'jobboardwp' ) );
-												} elseif ( 0 !== absint( $_POST['job_salary_max_amount'] ) && absint( $_POST['job_salary_min_amount'] ) >= absint( $_POST['job_salary_max_amount'] ) ) {
-													$posting_form->add_error( 'job_salary_min_amount', __( 'Job minimum salary must be lower than maximum salary', 'jobboardwp' ) );
-												} else {
-													$job_min_amount = absint( $_POST['job_salary_min_amount'] );
-												}
+												$job_min_amount = absint( $_POST['job_salary_min_amount'] );
+											}
 
-												if ( ! is_numeric( $_POST['job_salary_max_amount'] ) ) {
-													$posting_form->add_error( 'job_salary_max_amount', __( 'Job salary amount must be numeric', 'jobboardwp' ) );
-												} elseif ( 0 !== absint( $_POST['job_salary_max_amount'] ) && absint( $_POST['job_salary_max_amount'] ) <= absint( $_POST['job_salary_min_amount'] ) ) {
-													$posting_form->add_error( 'job_salary_max_amount', __( 'Job maximum salary must be higher than minimum salary', 'jobboardwp' ) );
-												} else {
-													$job_max_amount = absint( $_POST['job_salary_max_amount'] );
-												}
+											if ( ! is_numeric( $_POST['job_salary_max_amount'] ) ) {
+												$posting_form->add_error( 'job_salary_max_amount', __( 'Job salary amount must be numeric', 'jobboardwp' ) );
+											} elseif ( 0 !== absint( $_POST['job_salary_max_amount'] ) && absint( $_POST['job_salary_max_amount'] ) <= absint( $_POST['job_salary_min_amount'] ) ) {
+												$posting_form->add_error( 'job_salary_max_amount', __( 'Job maximum salary must be higher than minimum salary', 'jobboardwp' ) );
+											} else {
+												$job_max_amount = absint( $_POST['job_salary_max_amount'] );
 											}
 										}
 									}
@@ -819,7 +824,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 										if ( empty( $_POST['job_salary_period'] ) ) {
 											$posting_form->add_error( 'job_salary_period', __( 'Job salary period is required', 'jobboardwp' ) );
 										} else {
-											$job_period = sanitize_key( $_POST['job_salary_period'] );
+											$job_period = sanitize_key( wp_unslash( $_POST['job_salary_period'] ) );
 										}
 									}
 								}
@@ -844,9 +849,18 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 							if ( JB()->options()->get( 'individual-job-duration' ) ) {
 								/** This filter is documented in includes/admin/class-metabox.php */
 								$expiry = apply_filters( 'jb_default_individual_expiry', '' );
-								$expiry = ! empty( $_POST['job_expire'] ) ? gmdate( 'Y-m-d', strtotime( sanitize_text_field( $_POST['job_expire'] ) ) ) : $expiry;
+								$expiry = ! empty( $_POST['job_expire'] ) ? gmdate( 'Y-m-d', strtotime( sanitize_text_field( wp_unslash( $_POST['job_expire'] ) ) ) ) : $expiry;
 							} else {
 								$expiry = JB()->common()->job()->calculate_expiry();
+							}
+
+							if ( $is_edited && ! empty( $_GET['job-id'] ) ) {
+								// Reset expiration reminder marker as soon as expiration date is changed.
+								$job_id     = absint( $_GET['job-id'] );
+								$old_expiry = get_post_meta( $job_id, 'jb-expiry-date', true );
+								if ( $expiry !== $old_expiry ) {
+									delete_post_meta( $job_id, 'jb-is-expiration-reminded' );
+								}
 							}
 
 							$meta_input = array(
@@ -876,15 +890,13 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 											'jb-salary-period',
 										)
 									);
-								} else {
-									if ( 'fixed' === $salary_type ) {
-										$skip_meta_update = array_merge(
-											$skip_meta_update,
-											array(
-												'jb-salary-period',
-											)
-										);
-									}
+								} elseif ( 'fixed' === $salary_type ) {
+									$skip_meta_update = array_merge(
+										$skip_meta_update,
+										array(
+											'jb-salary-period',
+										)
+									);
 								}
 
 								if ( ! empty( $salary_amount_type ) ) {
@@ -906,29 +918,25 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 									}
 								}
 
-								if ( $is_edited ) {
-									if ( ! empty( $_GET['job-id'] ) ) {
-										$job_id = absint( $_GET['job-id'] );
-										if ( empty( $salary_type ) ) {
-											delete_post_meta( $job_id, 'jb-salary-type' );
-											delete_post_meta( $job_id, 'jb-salary-amount-type' );
-											delete_post_meta( $job_id, 'jb-salary-amount' );
+								if ( $is_edited && ! empty( $_GET['job-id'] ) ) {
+									$job_id = absint( $_GET['job-id'] );
+									if ( empty( $salary_type ) ) {
+										delete_post_meta( $job_id, 'jb-salary-type' );
+										delete_post_meta( $job_id, 'jb-salary-amount-type' );
+										delete_post_meta( $job_id, 'jb-salary-amount' );
+										delete_post_meta( $job_id, 'jb-salary-min-amount' );
+										delete_post_meta( $job_id, 'jb-salary-max-amount' );
+										delete_post_meta( $job_id, 'jb-salary-period' );
+									} elseif ( 'fixed' === $salary_type ) {
+										delete_post_meta( $job_id, 'jb-salary-period' );
+									}
+
+									if ( ! empty( $salary_amount_type ) ) {
+										if ( 'numeric' === $salary_amount_type ) {
 											delete_post_meta( $job_id, 'jb-salary-min-amount' );
 											delete_post_meta( $job_id, 'jb-salary-max-amount' );
-											delete_post_meta( $job_id, 'jb-salary-period' );
-										} else {
-											if ( 'fixed' === $salary_type ) {
-												delete_post_meta( $job_id, 'jb-salary-period' );
-											}
-										}
-
-										if ( ! empty( $salary_amount_type ) ) {
-											if ( 'numeric' === $salary_amount_type ) {
-												delete_post_meta( $job_id, 'jb-salary-min-amount' );
-												delete_post_meta( $job_id, 'jb-salary-max-amount' );
-											} elseif ( 'range' === $salary_amount_type ) {
-												delete_post_meta( $job_id, 'jb-salary-amount' );
-											}
+										} elseif ( 'range' === $salary_amount_type ) {
+											delete_post_meta( $job_id, 'jb-salary-amount' );
 										}
 									}
 								}
@@ -992,7 +1000,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 							if ( ! empty( $_GET['job-id'] ) ) {
 								$job_id = absint( $_GET['job-id'] );
 								$job    = get_post( $job_id );
-								if ( is_wp_error( $job ) || empty( $job ) ) {
+								if ( empty( $job ) || is_wp_error( $job ) ) {
 									$posting_form->add_error( 'global', __( 'Wrong job', 'jobboardwp' ) );
 								} else {
 									$job_data['ID'] = $job_id;
@@ -1023,23 +1031,18 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 								// $company_logo must be an image URL
 								if ( ! empty( $company_logo ) ) {
 									if ( $set_attachment ) {
-										/** @noinspection PhpIncludeInspection */
 										require_once ABSPATH . 'wp-admin/includes/image.php';
-										/** @noinspection PhpIncludeInspection */
 										require_once ABSPATH . 'wp-admin/includes/file.php';
-										/** @noinspection PhpIncludeInspection */
 										require_once ABSPATH . 'wp-admin/includes/media.php';
 
 										$image_id = media_sideload_image( $company_logo, $job_id, null, 'id' );
 										set_post_thumbnail( $job_id, $image_id );
 									}
-								} else {
-									if ( $is_edited ) {
-										if ( has_post_thumbnail( $job_id ) ) {
-											$thumbnail_id = get_post_thumbnail_id( $job_id );
-											if ( $thumbnail_id ) {
-												wp_delete_attachment( $thumbnail_id, true );
-											}
+								} elseif ( $is_edited ) {
+									if ( has_post_thumbnail( $job_id ) ) {
+										$thumbnail_id = get_post_thumbnail_id( $job_id );
+										if ( $thumbnail_id ) {
+											wp_delete_attachment( $thumbnail_id, true );
 										}
 									}
 								}
@@ -1126,23 +1129,21 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 
 						$job_id = absint( $_GET['job-id'] );
 						$job    = get_post( $job_id );
-						if ( is_wp_error( $job ) || empty( $job ) ) {
+						if ( empty( $job ) || is_wp_error( $job ) ) {
 							$preview_form->add_error( 'global', __( 'Wrong job', 'jobboardwp' ) );
 						}
 
 						if ( is_user_logged_in() ) {
-							if ( absint( $job->post_author ) !== get_current_user_id() && ! current_user_can( 'edit_post', $job_id ) ) {
+							if ( ! current_user_can( 'edit_post', $job_id ) && absint( $job->post_author ) !== get_current_user_id() ) {
 								$preview_form->add_error( 'global', __( 'Security action, Please try again with another job.', 'jobboardwp' ) );
 							}
+						} elseif ( ! isset( $_COOKIE['jb-guest-job-posting'] ) ) {
+							$preview_form->add_error( 'global', __( 'Security action, Please try again with another job.', 'jobboardwp' ) );
 						} else {
-							if ( ! isset( $_COOKIE['jb-guest-job-posting'] ) ) {
+							$nonce_action    = 'jb-guest-job-posting' . sanitize_text_field( wp_unslash( $_COOKIE['jb-guest-job-posting'] ) );
+							$job_guest_nonce = get_post_meta( $job_id, 'jb-guest-nonce', true );
+							if ( empty( $job_guest_nonce ) || ! wp_verify_nonce( $job_guest_nonce, $nonce_action ) ) {
 								$preview_form->add_error( 'global', __( 'Security action, Please try again with another job.', 'jobboardwp' ) );
-							} else {
-								$nonce_action    = 'jb-guest-job-posting' . sanitize_text_field( $_COOKIE['jb-guest-job-posting'] );
-								$job_guest_nonce = get_post_meta( $job_id, 'jb-guest-nonce', true );
-								if ( empty( $job_guest_nonce ) || ! wp_verify_nonce( $job_guest_nonce, $nonce_action ) ) {
-									$preview_form->add_error( 'global', __( 'Security action, Please try again with another job.', 'jobboardwp' ) );
-								}
 							}
 						}
 
@@ -1157,9 +1158,8 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 
 							$status = 'publish';
 							if ( ! empty( $is_edited ) ) {
-								if ( ! current_user_can( 'administrator' ) ) {
+								if ( ! current_user_can( 'manage_options' ) ) {
 									if ( 2 === (int) JB()->options()->get( 'published-job-editing' ) ) {
-										$status = 'publish';
 										if ( ! empty( $was_pending ) ) {
 											$status = 'pending';
 										}
@@ -1168,7 +1168,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 									}
 								}
 							} else {
-								$status = ( JB()->options()->get( 'job-moderation' ) && ! current_user_can( 'administrator' ) ) ? 'pending' : 'publish';
+								$status = ( JB()->options()->get( 'job-moderation' ) && ! current_user_can( 'manage_options' ) ) ? 'pending' : 'publish';
 							}
 
 							if ( ! $preview_form->has_errors() ) {
@@ -1181,9 +1181,9 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 
 								update_post_meta( $job_id, 'jb-last-edit-date', time() );
 
-								if ( ! empty( $is_edited ) ) {
-									$emails = JB()->common()->mail()->multi_admin_email();
+								$emails = JB()->common()->mail()->multi_admin_email();
 
+								if ( ! empty( $emails ) ) {
 									$approve_job_nonce = wp_create_nonce( 'jb-approve-job' . $job_id );
 									$approve_job_url   = add_query_arg(
 										array(
@@ -1196,26 +1196,30 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 									global $current_user;
 									$user_obj = $current_user;
 
-									if ( ! empty( $emails ) ) {
-										foreach ( $emails as $email ) {
-											$user         = get_user_by( 'email', $email );
-											$current_user = $user; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- is needed for getting correct job links in email content
-											JB()->common()->mail()->send(
-												$email,
-												'job_edited',
-												array(
-													'job_id'          => $job_id,
-													'job_title'       => $job->post_title,
-													'job_details'     => JB()->common()->mail()->get_job_details( $job ),
-													'view_job_url'    => get_permalink( $job ),
-													'approve_job_url' => $approve_job_url,
-													'edit_job_url'    => get_edit_post_link( $job_id ),
-												)
-											);
-										}
-										$current_user = $user_obj; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- is needed for getting correct job links in email content
-									}
+									$template = ! empty( $is_edited ) ? 'job_edited' : 'job_submitted';
 
+									$email_args = array(
+										'job_id'          => $job_id,
+										'job_title'       => $job->post_title,
+										'job_details'     => JB()->common()->mail()->get_job_details( $job ),
+										'view_job_url'    => get_permalink( $job ),
+										'approve_job_url' => $approve_job_url,
+										'edit_job_url'    => get_edit_post_link( $job_id ),
+									);
+
+									foreach ( $emails as $email ) {
+										$user         = get_user_by( 'email', $email );
+										$current_user = $user; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- is needed for getting correct job links in email content
+										$author       = get_userdata( $job->post_author );
+
+										$email_args['job_author'] = ! empty( $author ) ? $author->display_name : __( 'Guest', 'jobboardwp' );
+
+										JB()->common()->mail()->send( $email, $template, $email_args );
+									}
+									$current_user = $user_obj; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- is needed for getting correct job links in email content
+								}
+
+								if ( ! empty( $is_edited ) ) {
 									/**
 									 * Fires after Job has been edited.
 									 *
@@ -1226,40 +1230,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 									 * @param {WP_Post} $job    Job post object.
 									 */
 									do_action( 'jb_job_edited', $job_id, $job );
-
 								} else {
-									$emails = JB()->common()->mail()->multi_admin_email();
-
-									$approve_job_nonce = wp_create_nonce( 'jb-approve-job' . $job_id );
-									$approve_job_url   = add_query_arg(
-										array(
-											'jb_adm_action' => 'approve_job',
-											'job-id'        => $job_id, // phpcs:ignore WordPress.Arrays.MultipleStatementAlignment.DoubleArrowNotAligned
-											'nonce'         => $approve_job_nonce, // phpcs:ignore WordPress.Arrays.MultipleStatementAlignment.DoubleArrowNotAligned
-										),
-										admin_url()
-									);
-									global $current_user;
-									$user_obj = $current_user;
-
-									if ( ! empty( $emails ) ) {
-										foreach ( $emails as $email ) {
-											$user         = get_user_by( 'email', $email );
-											$current_user = $user; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- is needed for getting correct job content
-											JB()->common()->mail()->send(
-												$email,
-												'job_submitted',
-												array(
-													'job_id'          => $job_id,
-													'job_details'     => JB()->common()->mail()->get_job_details( $job ),
-													'view_job_url'    => get_permalink( $job ),
-													'approve_job_url' => $approve_job_url,
-													'edit_job_url'    => get_edit_post_link( $job_id ),
-												)
-											);
-										}
-									}
-									$current_user = $user_obj; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- is needed for getting correct job content
 									/**
 									 * Fires after Job has been published.
 									 *
@@ -1273,11 +1244,11 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 								}
 
 								$job_post_page_url = JB()->get_current_url( true );
-								if ( empty( $is_edited ) && JB()->options()->get( 'job-moderation' ) && ! current_user_can( 'administrator' ) ) {
+								if ( empty( $is_edited ) && ! current_user_can( 'manage_options' ) && JB()->options()->get( 'job-moderation' ) ) {
 									$url = add_query_arg( array( 'msg' => 'on-moderation' ), $job_post_page_url );
-								} elseif ( ! empty( $is_edited ) && 1 === (int) JB()->options()->get( 'published-job-editing' ) && ! current_user_can( 'administrator' ) ) {
+								} elseif ( ! empty( $is_edited ) && ! current_user_can( 'manage_options' ) && 1 === (int) JB()->options()->get( 'published-job-editing' ) ) {
 									$url = add_query_arg( array( 'msg' => 'on-moderation' ), $job_post_page_url );
-								} elseif ( ! empty( $is_edited ) && 2 === (int) JB()->options()->get( 'published-job-editing' ) && ! empty( $was_pending ) && ! current_user_can( 'administrator' ) ) {
+								} elseif ( ! empty( $is_edited ) && ! empty( $was_pending ) && ! current_user_can( 'manage_options' ) && 2 === (int) JB()->options()->get( 'published-job-editing' ) ) {
 									$url = add_query_arg( array( 'msg' => 'on-moderation' ), $job_post_page_url );
 								} else {
 									$url = add_query_arg(
@@ -1294,7 +1265,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 								wp_safe_redirect( $url );
 								exit;
 							}
-						} elseif ( 'draft' === sanitize_key( $_POST['jb-job-submission-step'] ) ) {
+						} elseif ( 'draft' === sanitize_key( wp_unslash( $_POST['jb-job-submission-step'] ) ) ) {
 							if ( ! $preview_form->has_errors() ) {
 								wp_update_post(
 									array(
@@ -1320,7 +1291,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 
 						$posting_form->flush_errors();
 
-						if ( empty( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( $_POST['nonce'] ), 'jb-company-details' ) ) {
+						if ( empty( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'jb-company-details' ) ) {
 							$posting_form->add_error( 'global', __( 'Security issue, Please try again', 'jobboardwp' ) );
 						}
 
@@ -1329,26 +1300,26 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						if ( empty( $_POST['company_name'] ) ) {
 							$posting_form->add_error( 'company_name', __( 'Company name cannot be empty', 'jobboardwp' ) );
 						} else {
-							$company_name = sanitize_text_field( $_POST['company_name'] );
+							$company_name = sanitize_text_field( wp_unslash( $_POST['company_name'] ) );
 							if ( empty( $company_name ) ) {
 								$posting_form->add_error( 'company_name', __( 'Company name cannot be empty', 'jobboardwp' ) );
 							}
 						}
 
-						$company_website = ! empty( $_POST['company_website'] ) ? sanitize_text_field( $_POST['company_website'] ) : '';
+						$company_website = ! empty( $_POST['company_website'] ) ? sanitize_text_field( wp_unslash( $_POST['company_website'] ) ) : '';
 						if ( ! empty( $company_website ) ) {
 							// Prefix http if needed.
-							if ( ! strstr( $company_website, 'http:' ) && ! strstr( $company_website, 'https:' ) ) {
-								$company_website = 'http://' . $company_website;
+							if ( false === strpos( $company_website, 'http:' ) && false === strpos( $company_website, 'https:' ) ) {
+								$company_website = 'https://' . $company_website;
 							}
 							if ( ! filter_var( $company_website, FILTER_VALIDATE_URL ) ) {
 								$posting_form->add_error( 'company_website', __( 'Company website is invalid', 'jobboardwp' ) );
 							}
 						}
 
-						$company_tagline = ! empty( $_POST['company_tagline'] ) ? sanitize_text_field( $_POST['company_tagline'] ) : '';
+						$company_tagline = ! empty( $_POST['company_tagline'] ) ? sanitize_text_field( wp_unslash( $_POST['company_tagline'] ) ) : '';
 
-						$company_twitter = ! empty( $_POST['company_twitter'] ) ? sanitize_text_field( $_POST['company_twitter'] ) : '';
+						$company_twitter = ! empty( $_POST['company_twitter'] ) ? sanitize_text_field( wp_unslash( $_POST['company_twitter'] ) ) : '';
 						if ( ! empty( $company_twitter ) ) {
 							if ( 0 === strpos( $company_twitter, '@' ) ) {
 								$company_twitter = substr( $company_twitter, 1 );
@@ -1357,7 +1328,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 							if ( ! empty( $company_twitter ) ) {
 
 								$validate_company_twitter = $company_twitter;
-								if ( ! strstr( $company_twitter, 'https://twitter.com/' ) ) {
+								if ( false === strpos( $company_twitter, 'https://twitter.com/' ) ) {
 									$validate_company_twitter = 'https://twitter.com/' . $company_twitter;
 								}
 
@@ -1367,10 +1338,10 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 							}
 						}
 
-						$company_facebook = ! empty( $_POST['company_facebook'] ) ? sanitize_text_field( $_POST['company_facebook'] ) : '';
+						$company_facebook = ! empty( $_POST['company_facebook'] ) ? sanitize_text_field( wp_unslash( $_POST['company_facebook'] ) ) : '';
 						if ( ! empty( $company_facebook ) ) {
 							$validate_company_facebook = $company_facebook;
-							if ( ! strstr( $company_facebook, 'https://facebook.com/' ) ) {
+							if ( false === strpos( $company_facebook, 'https://facebook.com/' ) ) {
 								$validate_company_facebook = 'https://facebook.com/' . $company_facebook;
 							}
 
@@ -1379,10 +1350,10 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 							}
 						}
 
-						$company_instagram = ! empty( $_POST['company_instagram'] ) ? sanitize_text_field( $_POST['company_instagram'] ) : '';
+						$company_instagram = ! empty( $_POST['company_instagram'] ) ? sanitize_text_field( wp_unslash( $_POST['company_instagram'] ) ) : '';
 						if ( ! empty( $company_instagram ) ) {
 							$validate_company_instagram = $company_instagram;
-							if ( ! strstr( $company_instagram, 'https://instagram.com/' ) ) {
+							if ( false === strpos( $company_instagram, 'https://instagram.com/' ) ) {
 								$validate_company_instagram = 'https://instagram.com/' . $company_instagram;
 							}
 
@@ -1394,11 +1365,18 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 						$company_logo = '';
 						if ( ! empty( $_POST['company_logo'] ) && ! empty( $_POST['company_logo_hash'] ) ) {
 							// The new company logo has been uploaded, so we need to update the current user logo
-							if ( md5( sanitize_file_name( $_POST['company_logo'] ) . '_jb_uploader_security_salt' ) !== sanitize_key( $_POST['company_logo_hash'] ) ) {
+							if ( md5( sanitize_file_name( wp_unslash( $_POST['company_logo'] ) ) . '_jb_uploader_security_salt' ) !== sanitize_key( wp_unslash( $_POST['company_logo_hash'] ) ) ) {
 								// invalid salt for company logo, it's for the security enhancements
 								$posting_form->add_error( 'company_logo', __( 'Something wrong with image, please re-upload', 'jobboardwp' ) );
 							} else {
-								$company_logo_temp = sanitize_file_name( $_POST['company_logo'] );
+								if ( ! $wp_filesystem instanceof WP_Filesystem_Base ) {
+									require_once ABSPATH . 'wp-admin/includes/file.php';
+
+									$credentials = request_filesystem_credentials( site_url() );
+									WP_Filesystem( $credentials );
+								}
+
+								$company_logo_temp = sanitize_file_name( wp_unslash( $_POST['company_logo'] ) );
 
 								if ( is_multisite() ) {
 									$main_blog = get_network()->site_id;
@@ -1424,13 +1402,13 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 								$newname = wp_normalize_path( $logos_dir . DIRECTORY_SEPARATOR . $user_id . '.' . $type['ext'] );
 								$oldname = wp_normalize_path( JB()->common()->filesystem()->temp_upload_dir . DIRECTORY_SEPARATOR . $company_logo_temp );
 
-								if ( file_exists( $oldname ) && rename( $oldname, $newname ) ) {
+								if ( file_exists( $oldname ) && $wp_filesystem->move( $oldname, $newname, true ) ) {
 									$company_logo = trailingslashit( $logos_url ) . $user_id . '.' . $type['ext'];
 								}
 							}
 						} elseif ( ! empty( $_POST['company_logo'] ) ) {
 							// post a job with a regular company logo that hasn't been changed when posting a job
-							$company_logo_post = sanitize_text_field( $_POST['company_logo'] );
+							$company_logo_post = sanitize_text_field( wp_unslash( $_POST['company_logo'] ) );
 
 							if ( ! filter_var( $company_logo_post, FILTER_VALIDATE_URL ) ) {
 								// company logo must be a URL
@@ -1471,7 +1449,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 
 										} else {
 
-											$image = wp_get_attachment_image_src( $attachment_id, 'thumbnail' );
+											$image = wp_get_attachment_image_src( $attachment_id );
 
 											if ( ! isset( $image[0] ) || $company_logo_post !== $image[0] ) {
 												$posting_form->add_error( 'company_logo', __( 'Wrong image URL. Invalid attachment path', 'jobboardwp' ) );

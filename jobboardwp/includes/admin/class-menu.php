@@ -1,12 +1,11 @@
-<?php namespace jb\admin;
+<?php
+namespace jb\admin;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-
 if ( ! class_exists( 'jb\admin\Menu' ) ) {
-
 
 	/**
 	 * Class Menu
@@ -15,7 +14,6 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 	 */
 	class Menu {
 
-
 		/**
 		 * @var string Main Menu slug
 		 *
@@ -23,19 +21,17 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 		 */
 		public $slug = 'jobboardwp';
 
-
 		/**
 		 * Menu constructor.
 		 */
 		public function __construct() {
 			add_action( 'admin_menu', array( &$this, 'menu' ) );
 			add_filter( 'submenu_file', array( &$this, 'remove_dashboard' ) );
-			add_filter( 'admin_body_class', array( &$this, 'selected_menu' ), 10, 1 );
+			add_filter( 'admin_body_class', array( &$this, 'selected_menu' ) );
 
 			add_action( 'init', array( &$this, 'wrong_settings' ), 9999 );
 			add_action( 'admin_head', array( &$this, 'add_pending_count' ) );
 		}
-
 
 		/**
 		 * Change label for admin menu item to show number of Job Listing items pending approval.
@@ -74,7 +70,6 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 			}
 		}
 
-
 		/**
 		 * Add admin menus
 		 *
@@ -92,7 +87,7 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 				}
 			}
 			add_menu_page( __( 'Job Board', 'jobboardwp' ), __( 'Job Board', 'jobboardwp' ), $parent_capability, $this->slug, '', 'dashicons-businessman', 40 );
-			add_submenu_page( $this->slug, __( 'Dashboard', 'jobboardwp' ), __( 'Dashboard', 'jobboardwp' ), 'manage_options', $this->slug, '' );
+			add_submenu_page( $this->slug, __( 'Dashboard', 'jobboardwp' ), __( 'Dashboard', 'jobboardwp' ), 'manage_options', $this->slug );
 
 			add_submenu_page( $this->slug, __( 'Jobs', 'jobboardwp' ), __( 'Jobs', 'jobboardwp' ), 'read_private_jb-jobs', 'edit.php?post_type=jb-job' );
 			add_submenu_page( $this->slug, __( 'Add New', 'jobboardwp' ), __( 'Add New', 'jobboardwp' ), 'create_jb-jobs', 'post-new.php?post_type=jb-job' );
@@ -104,7 +99,6 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 
 			add_submenu_page( $this->slug, __( 'Settings', 'jobboardwp' ), __( 'Settings', 'jobboardwp' ), 'manage_options', 'jb-settings', array( &$this, 'settings' ) );
 		}
-
 
 		/**
 		 * Hide first submenu and replace to Jobs
@@ -134,7 +128,6 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 			return $submenu_file;
 		}
 
-
 		/**
 		 * Made selected Job Board menu on Add/Edit CPT and Term Taxonomies
 		 *
@@ -147,12 +140,12 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 			global $submenu, $pagenow;
 
 			if ( isset( $submenu[ $this->slug ] ) ) {
-				if ( isset( $_GET['post_type'] ) && 'jb-job' === sanitize_key( $_GET['post_type'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+				if ( isset( $_GET['post_type'] ) && 'jb-job' === sanitize_key( wp_unslash( $_GET['post_type'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 					add_filter( 'parent_file', array( &$this, 'change_parent_file' ), 200 );
 				}
 
 				// phpcs:ignore WordPress.Security.NonceVerification
-				if ( 'post.php' === $pagenow && ( isset( $_GET['post'] ) && 'jb-job' === get_post_type( sanitize_text_field( $_GET['post'] ) ) ) ) {
+				if ( 'post.php' === $pagenow && ( isset( $_GET['post'] ) && 'jb-job' === get_post_type( sanitize_text_field( wp_unslash( $_GET['post'] ) ) ) ) ) {
 					add_filter( 'parent_file', array( &$this, 'change_parent_file' ), 200 );
 				}
 
@@ -161,7 +154,6 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 
 			return $classes;
 		}
-
 
 		/**
 		 * Return admin submenu variable for display pages
@@ -180,7 +172,6 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 
 			return $this->slug;
 		}
-
 
 		/**
 		 * Return admin submenu variable for display pages
@@ -201,7 +192,7 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 					$all_taxonomies = array_keys( $all_taxonomies );
 
 					// phpcs:disable WordPress.Security.NonceVerification
-					if ( isset( $_GET['post_type'] ) && 'jb-job' === sanitize_key( $_GET['post_type'] ) && isset( $_GET['taxonomy'] ) && in_array( sanitize_key( $_GET['taxonomy'] ), $all_taxonomies, true ) ) {
+					if ( isset( $_GET['post_type'], $_GET['taxonomy'] ) && 'jb-job' === sanitize_key( $_GET['post_type'] ) && in_array( sanitize_key( $_GET['taxonomy'] ), $all_taxonomies, true ) ) {
 						$submenu_file = 'edit-tags.php?taxonomy=' . sanitize_key( $_GET['taxonomy'] ) . '&post_type=' . sanitize_key( $_GET['post_type'] );
 					} elseif ( 'post-new.php' === $pagenow && isset( $_GET['post_type'] ) && 'jb-job' === sanitize_key( $_GET['post_type'] ) ) {
 						$submenu_file = 'edit.php?post_type=' . sanitize_key( $_GET['post_type'] );
@@ -216,7 +207,6 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 			return $submenu_file;
 		}
 
-
 		/**
 		 * Handle redirect if wrong settings tab is open
 		 *
@@ -226,34 +216,31 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 			global $pagenow;
 
 			// phpcs:ignore WordPress.Security.NonceVerification
-			if ( 'admin.php' === $pagenow && isset( $_GET['page'] ) && 'jb-settings' === sanitize_key( $_GET['page'] ) ) {
-				$current_tab    = empty( $_GET['tab'] ) ? '' : sanitize_key( urldecode( $_GET['tab'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
-				$current_subtab = empty( $_GET['section'] ) ? '' : sanitize_key( urldecode( $_GET['section'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+			if ( 'admin.php' === $pagenow && isset( $_GET['page'] ) && 'jb-settings' === sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
+				$current_tab    = empty( $_GET['tab'] ) ? '' : sanitize_key( wp_unslash( $_GET['tab'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+				$current_subtab = empty( $_GET['section'] ) ? '' : sanitize_key( wp_unslash( $_GET['section'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
 
 				$settings_struct = JB()->admin()->settings()->get_settings( $current_tab, $current_subtab );
 				$custom_section  = JB()->admin()->settings()->section_is_custom( $current_tab, $current_subtab );
 
 				if ( ! $custom_section && empty( $settings_struct ) ) {
-					// phpcs:ignore WordPress.Security.SafeRedirect -- admin screen redirect
-					wp_redirect( add_query_arg( array( 'page' => 'jb-settings' ), admin_url( 'admin.php' ) ) );
+					wp_safe_redirect( add_query_arg( array( 'page' => 'jb-settings' ), admin_url( 'admin.php' ) ) );
 					exit;
-				} else {
-					//remove extra query arg for Email list table
-					$email_key           = empty( $_GET['email'] ) ? '' : sanitize_key( urldecode( $_GET['email'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
-					$email_notifications = JB()->config()->get( 'email_notifications' );
+				}
 
-					if ( empty( $email_key ) || empty( $email_notifications[ $email_key ] ) ) {
-						// phpcs:ignore WordPress.Security.NonceVerification
-						if ( ! empty( $_GET['_wp_http_referer'] ) && 'email' === $current_tab ) {
-							// phpcs:ignore WordPress.Security.SafeRedirect -- admin screen redirect
-							wp_redirect( remove_query_arg( array( '_wp_http_referer', '_wpnonce' ), wp_unslash( $_SERVER['REQUEST_URI'] ) ) );
-							exit;
-						}
+				//remove extra query arg for Email list table
+				$email_key           = empty( $_GET['email'] ) ? '' : sanitize_key( wp_unslash( $_GET['email'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+				$email_notifications = JB()->config()->get( 'email_notifications' );
+
+				if ( empty( $email_key ) || empty( $email_notifications[ $email_key ] ) ) {
+					// phpcs:ignore WordPress.Security.NonceVerification
+					if ( ! empty( $_GET['_wp_http_referer'] ) && ! empty( $_SERVER['REQUEST_URI'] ) && 'email' === $current_tab ) {
+						wp_safe_redirect( remove_query_arg( array( '_wp_http_referer', '_wpnonce' ), wp_unslash( $_SERVER['REQUEST_URI'] ) ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- REQUEST_URI ok
+						exit;
 					}
 				}
 			}
 		}
-
 
 		/**
 		 * Settings page callback
@@ -261,7 +248,6 @@ if ( ! class_exists( 'jb\admin\Menu' ) ) {
 		 * @since 1.0
 		 */
 		public function settings() {
-			/** @noinspection PhpIncludeInspection */
 			include_once JB()->admin()->templates_path . 'settings' . DIRECTORY_SEPARATOR . 'settings.php';
 		}
 	}

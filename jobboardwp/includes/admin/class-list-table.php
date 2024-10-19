@@ -1,12 +1,13 @@
-<?php namespace jb\admin;
+<?php
+namespace jb\admin;
+
+use WP_Post;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-
 if ( ! class_exists( 'jb\admin\List_Table' ) ) {
-
 
 	/**
 	 * Class List_Table
@@ -14,7 +15,6 @@ if ( ! class_exists( 'jb\admin\List_Table' ) ) {
 	 * @package jb\admin
 	 */
 	class List_Table extends \WP_Posts_List_Table {
-
 
 		// phpcs:disable Generic.CodeAnalysis.UselessOverridingMethod
 		/**
@@ -27,7 +27,6 @@ if ( ! class_exists( 'jb\admin\List_Table' ) ) {
 		}
 		// phpcs:enable Generic.CodeAnalysis.UselessOverridingMethod
 
-
 		/**
 		 * @param array $args
 		 */
@@ -35,18 +34,16 @@ if ( ! class_exists( 'jb\admin\List_Table' ) ) {
 			$this->set_pagination_args( $args );
 		}
 
-
 		/**
 		 * Change the title column content at wp-admin Jobs page
 		 *
-		 * @param \WP_Post $post
+		 * @param WP_Post $post
 		 *
 		 * @since 1.0
 		 */
 		public function column_title( $post ) {
-
-			$can_edit_post = current_user_can( 'edit_post', $post->ID ); ?>
-
+			$can_edit_post = current_user_can( 'edit_post', $post->ID );
+			?>
 			<div class="jb-job-data">
 				<div class="jb-job-title-company">
 					<strong>
@@ -54,13 +51,12 @@ if ( ! class_exists( 'jb\admin\List_Table' ) ) {
 						$title = _draft_or_post_title();
 
 						if ( $can_edit_post && 'trash' !== $post->post_status ) {
-							/** @noinspection HtmlUnknownTarget */
 							printf(
 								'(#%1$s)&nbsp;<a class="row-title" href="%2$s" aria-label="%3$s">%4$s</a>',
 								esc_html( $post->ID ),
 								esc_attr( get_edit_post_link( $post->ID ) ),
 								// translators: %s: Post title.
-								esc_attr( sprintf( __( '&#8220;%s&#8221; (Edit)' ), $title ) ),
+								esc_attr( sprintf( __( '&#8220;%s&#8221; (Edit)', 'jobboardwp' ), $title ) ),
 								$title // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped  -- already escaped via `_draft_or_post_title()`
 							);
 						} else {
@@ -79,7 +75,6 @@ if ( ! class_exists( 'jb\admin\List_Table' ) ) {
 					$company_website = get_post_meta( $post->ID, 'jb-company-website', true );
 
 					if ( ! empty( $company_website ) ) {
-						/** @noinspection HtmlUnknownTarget */
 						printf(
 							'<div class="company"><span title="%1$s"><a href="%2$s">%3$s</a></span></div>' . "\n",
 							esc_attr( $company_tagline ),
@@ -105,7 +100,7 @@ if ( ! class_exists( 'jb\admin\List_Table' ) ) {
 					$lock_holder   = get_userdata( $lock_holder );
 					$locked_avatar = get_avatar( $lock_holder->ID, 18 );
 					// translators: %s: User's display name.
-					$locked_text = sprintf( __( '%s is currently editing' ), $lock_holder->display_name );
+					$locked_text = sprintf( __( '%s is currently editing', 'jobboardwp' ), $lock_holder->display_name );
 				} else {
 					$locked_avatar = '';
 					$locked_text   = '';
@@ -118,7 +113,6 @@ if ( ! class_exists( 'jb\admin\List_Table' ) ) {
 				<?php
 				echo "\n";
 			}
-
 		}
 	}
 }

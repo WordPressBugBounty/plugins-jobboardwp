@@ -1,12 +1,13 @@
-<?php namespace jb\common;
+<?php
+namespace jb\common;
+
+use WP_Post;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-
 if ( ! class_exists( 'jb\common\Mail' ) ) {
-
 
 	/**
 	 * Class Mail
@@ -15,19 +16,10 @@ if ( ! class_exists( 'jb\common\Mail' ) ) {
 	 */
 	class Mail {
 
-
 		/**
 		 * @var bool
 		 */
 		private $sending = false;
-
-
-		/**
-		 * Mail constructor.
-		 */
-		public function __construct() {
-		}
-
 
 		/**
 		 * @return bool
@@ -35,7 +27,6 @@ if ( ! class_exists( 'jb\common\Mail' ) ) {
 		public function is_sending() {
 			return $this->sending;
 		}
-
 
 		/**
 		 * Prepare email template to send
@@ -76,10 +67,8 @@ if ( ! class_exists( 'jb\common\Mail' ) ) {
 			$message = apply_filters( 'jb_email_template_content', $message, $slug, $args );
 
 			// Convert tags in email template
-			$message = $this->replace_placeholders( $message, $args );
-			return $message;
+			return $this->replace_placeholders( $message, $args );
 		}
-
 
 		/**
 		 * Send Email function
@@ -103,9 +92,23 @@ if ( ! class_exists( 'jb\common\Mail' ) ) {
 
 			$this->sending = true;
 
+			/**
+			 * Filters the email notification placeholders.
+			 *
+			 * @since 1.2.8
+			 * @hook jb_email_sending_placeholders
+			 *
+			 * @param {array}  $args     Passed into the `send()` function arguments. There can be data to replace placeholders.
+			 * @param {string} $email    Recipient email address.
+			 * @param {string} $template Email notification key.
+			 *
+			 * @return {array} Passed into the `send()` function arguments.
+			 */
+			$args = apply_filters( 'jb_email_sending_placeholders', $args, $email, $template );
+
 			add_filter(
 				'jb_template_locations_base_user_id_for_locale',
-				function( $user_id ) use ( $email ) {
+				static function ( $user_id ) use ( $email ) {
 					$user = get_user_by( 'email', $email );
 					if ( false !== $user && isset( $user->ID ) ) {
 						$user_id = $user->ID;
@@ -182,11 +185,10 @@ if ( ! class_exists( 'jb\common\Mail' ) ) {
 			$this->sending = false;
 		}
 
-
 		/**
 		 * Get job details for placeholder
 		 *
-		 * @param \WP_Post $job
+		 * @param WP_Post $job
 		 *
 		 * @return string
 		 *
@@ -229,7 +231,6 @@ if ( ! class_exists( 'jb\common\Mail' ) ) {
 			return $details;
 		}
 
-
 		/**
 		 * Replace placeholders
 		 *
@@ -242,7 +243,7 @@ if ( ! class_exists( 'jb\common\Mail' ) ) {
 		 */
 		public function replace_placeholders( $content, $args ) {
 			$tags = array_map(
-				function( $item ) {
+				function ( $item ) {
 					return '{' . $item . '}';
 				},
 				array_keys( $args )
@@ -282,10 +283,8 @@ if ( ! class_exists( 'jb\common\Mail' ) ) {
 			 */
 			$tags_replace = apply_filters( 'jb_mail_replace_placeholders', $tags_replace, $args );
 
-			$content = str_replace( $tags, $tags_replace, $content );
-			return $content;
+			return str_replace( $tags, $tags_replace, $content );
 		}
-
 
 		/**
 		 * Get admin emails
@@ -302,8 +301,7 @@ if ( ! class_exists( 'jb\common\Mail' ) ) {
 				$emails_array = array_map( 'trim', $emails_array );
 			}
 
-			$emails_array = array_unique( $emails_array );
-			return $emails_array;
+			return array_unique( $emails_array );
 		}
 	}
 }

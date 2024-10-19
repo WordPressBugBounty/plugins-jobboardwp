@@ -1,12 +1,11 @@
-<?php namespace jb;
+<?php
+namespace jb;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-
 if ( ! class_exists( 'jb\Config' ) ) {
-
 
 	/**
 	 * Class Config
@@ -15,54 +14,45 @@ if ( ! class_exists( 'jb\Config' ) ) {
 	 */
 	class Config {
 
-
 		/**
 		 * @var array
 		 */
 		public $defaults;
-
 
 		/**
 		 * @var array
 		 */
 		public $custom_roles;
 
-
 		/**
 		 * @var array
 		 */
 		public $all_caps;
-
 
 		/**
 		 * @var array
 		 */
 		public $capabilities_map;
 
-
 		/**
 		 * @var array
 		 */
 		public $permalink_options;
-
 
 		/**
 		 * @var array
 		 */
 		public $predefined_pages;
 
-
 		/**
 		 * @var array
 		 */
 		public $email_notifications;
 
-
 		/**
 		 * @var array
 		 */
 		public $currencies;
-
 
 		/**
 		 * @since 1.2.2
@@ -70,13 +60,6 @@ if ( ! class_exists( 'jb\Config' ) ) {
 		 * @var array
 		 */
 		public $modules = array();
-
-		/**
-		 * Config constructor.
-		 */
-		public function __construct() {
-		}
-
 
 		/**
 		 * Get variable from config
@@ -117,7 +100,6 @@ if ( ! class_exists( 'jb\Config' ) ) {
 				$data['url']  = JB_URL . "modules/{$slug}/";
 			}
 		}
-
 
 		/**
 		 * Init plugin defaults
@@ -185,7 +167,6 @@ if ( ! class_exists( 'jb\Config' ) ) {
 			}
 		}
 
-
 		/**
 		 * Initialize JB custom roles list
 		 *
@@ -196,7 +177,6 @@ if ( ! class_exists( 'jb\Config' ) ) {
 				'jb_employer' => __( 'Employer', 'jobboardwp' ),
 			);
 		}
-
 
 		/**
 		 * Initialize JB roles capabilities list
@@ -237,7 +217,6 @@ if ( ! class_exists( 'jb\Config' ) ) {
 			);
 		}
 
-
 		/**
 		 * Initialize JB custom capabilities
 		 *
@@ -270,7 +249,6 @@ if ( ! class_exists( 'jb\Config' ) ) {
 			);
 		}
 
-
 		/**
 		 * Initialize JB permalink options
 		 *
@@ -283,7 +261,6 @@ if ( ! class_exists( 'jb\Config' ) ) {
 				'job-category-slug',
 			);
 		}
-
 
 		/**
 		 * Initialize JB predefined pages
@@ -310,7 +287,6 @@ if ( ! class_exists( 'jb\Config' ) ) {
 				),
 			);
 		}
-
 
 		/**
 		 * Initialize JB email notifications

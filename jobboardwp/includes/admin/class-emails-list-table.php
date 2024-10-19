@@ -1,4 +1,5 @@
-<?php namespace jb\admin;
+<?php
+namespace jb\admin;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -6,7 +7,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 
 if ( ! class_exists( '\WP_List_Table' ) ) {
-	/** @noinspection PhpIncludeInspection */
 	require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
 }
 

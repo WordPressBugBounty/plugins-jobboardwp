@@ -1,12 +1,11 @@
-<?php namespace jb\common;
+<?php
+namespace jb\common;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-
 if ( ! class_exists( 'jb\common\User' ) ) {
-
 
 	/**
 	 * Class User
@@ -14,15 +13,6 @@ if ( ! class_exists( 'jb\common\User' ) ) {
 	 * @package jb\common
 	 */
 	class User {
-
-
-		/**
-		 * User constructor.
-		 */
-		public function __construct() {
-
-		}
-
 
 		/**
 		 * Get company data by the user
@@ -79,7 +69,6 @@ if ( ! class_exists( 'jb\common\User' ) ) {
 			$company_data = apply_filters( 'jb-user-company-data', $company_data, $user_id ); // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores
 			return $company_data;
 		}
-
 
 		/**
 		 * Set company data
