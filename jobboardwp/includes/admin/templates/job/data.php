@@ -37,12 +37,12 @@ $users = array(
 
 $users_query = get_users(
 	array(
-		'fields' => array( 'ID', 'display_name' ),
+		'fields' => array( 'ID', 'display_name', 'user_login' ),
 	)
 );
 
 foreach ( $users_query as $user ) {
-	$users[ $user->ID ] = $user->display_name;
+	$users[ $user->ID ] = ! empty( $user->display_name ) ? $user->display_name : $user->user_login;
 }
 
 $types = get_terms(

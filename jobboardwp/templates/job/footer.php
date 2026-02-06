@@ -4,7 +4,7 @@
  *
  * This template can be overridden by copying it to yourtheme/jobboardwp/job/footer.php
  *
- * @version 1.2.8
+ * @version 1.3.3
  *
  * @var array $jb_job_footer
  */
@@ -36,7 +36,7 @@ if ( ! empty( $jb_job_footer['job_id'] ) ) {
 							$contact_mailto = add_query_arg(
 								array(
 									// translators: %1$s: application type, %2$s: home URL
-									'subject' => esc_html__( sprintf( __( 'Application via %1$s job on %2$s', 'jobboardwp' ), $job_title, home_url() ), 'jobboardwp' ), // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText
+									'subject' => esc_html( sprintf( __( 'Application via %1$s job on %2$s', 'jobboardwp' ), $job_title, home_url() ) ),
 								),
 								'mailto:' . $contact
 							);
@@ -73,7 +73,7 @@ if ( ! empty( $jb_job_footer['job_id'] ) ) {
 							</p>
 						<?php } ?>
 
-						<a href="javascript:void(0);" class="jb-job-apply-hide"><?php esc_html_e( 'Cancel', 'jobboardwp' ); ?></a>
+						<input type="button" class="jb-button jb-job-apply-hide" value="<?php esc_attr_e( 'Cancel', 'jobboardwp' ); ?>" />
 					</div>
 				</div>
 				<div class="jb-job-after-apply-wrapper">

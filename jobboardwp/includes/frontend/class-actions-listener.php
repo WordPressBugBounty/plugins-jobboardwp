@@ -1036,7 +1036,9 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 										require_once ABSPATH . 'wp-admin/includes/media.php';
 
 										$image_id = media_sideload_image( $company_logo, $job_id, null, 'id' );
-										set_post_thumbnail( $job_id, $image_id );
+										if ( ! is_wp_error( $image_id ) ) {
+											set_post_thumbnail( $job_id, $image_id );
+										}
 									}
 								} elseif ( $is_edited ) {
 									if ( has_post_thumbnail( $job_id ) ) {
@@ -1244,6 +1246,7 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 								}
 
 								$job_post_page_url = JB()->get_current_url( true );
+								$job_post_page_url = remove_query_arg( array( 'jb-preview', 'job-id', 'nonce' ), $job_post_page_url );
 								if ( empty( $is_edited ) && ! current_user_can( 'manage_options' ) && JB()->options()->get( 'job-moderation' ) ) {
 									$url = add_query_arg( array( 'msg' => 'on-moderation' ), $job_post_page_url );
 								} elseif ( ! empty( $is_edited ) && ! current_user_can( 'manage_options' ) && 1 === (int) JB()->options()->get( 'published-job-editing' ) ) {
@@ -1274,8 +1277,9 @@ if ( ! class_exists( 'jb\frontend\Actions_Listener' ) ) {
 									)
 								);
 
-								//redirect to job's draft
-								$url = JB()->common()->job()->get_edit_link( $job_id, JB()->get_current_url( true ) );
+								$url = remove_query_arg( array( 'jb-preview', 'job-id', 'nonce' ), JB()->get_current_url( true ) );
+								// redirect to job's draft
+								$url = JB()->common()->job()->get_edit_link( $job_id, $url );
 								wp_safe_redirect( $url );
 								exit;
 							}
