@@ -74,7 +74,7 @@ wp.JB.jobs_list = {
 
 			var query_strings = [];
 			jQuery.each( new_data, function( data_key ) {
-				query_strings.push( data_key + '=' + new_data[ data_key ] );
+				query_strings.push( encodeURIComponent( data_key ) + '=' + encodeURIComponent( new_data[ data_key ] ) );
 			});
 
 			query_strings = wp.hooks.applyFilters( 'jb_job_dashboard_url_attrs', query_strings );
@@ -93,7 +93,7 @@ wp.JB.jobs_list = {
 
 			jQuery.each( url_data, function( key ) {
 				if ( url_data[ key ] !== '' ) {
-					data[ key ] = url_data[ key ];
+					data[ decodeURIComponent( key ) ] = url_data[ key ];
 				}
 			});
 
@@ -525,7 +525,7 @@ jQuery( document ).ready( function($) {
 		jobs_list.data( 'page', 1 );
 		wp.JB.jobs_list.url.set( jobs_list, 'jb-page', '' );
 
-		wp.JB.jobs_list.url.set( jobs_list, 'jb-job-type', $(this).val() );
+		wp.JB.jobs_list.url.set( jobs_list, 'jb-type', $(this).val() );
 
 		wp.JB.jobs_list.ajax( jobs_list );
 	});
